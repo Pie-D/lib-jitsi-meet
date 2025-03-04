@@ -69,7 +69,7 @@ export default class RayoConnectionPlugin extends ConnectionPlugin {
                     value: roomPass
                 }).up();
             }
-
+            logger.info('Dial req', req);
             this.connection.sendIQ(
                 req,
                 result => {
