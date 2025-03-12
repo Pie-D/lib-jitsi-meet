@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { AUTH_ERROR_TYPES } from '../../JitsiConferenceErrors';
 import * as JitsiTranscriptionStatus from '../../JitsiTranscriptionStatus';
+import { env } from '../../env';
 import { MediaType } from '../../service/RTC/MediaType';
 import { VideoType } from '../../service/RTC/VideoType';
 import AuthenticationEvents from '../../service/authentication/AuthenticationEvents';
@@ -201,6 +202,10 @@ export default class ChatRoom extends Listenable {
         this.locked = false;
         this.transcriptionStatus = JitsiTranscriptionStatus.OFF;
         this.initialDiscoRoomInfoReceived = false;
+
+        this.participantId = jid.split('/')[1];
+        this.loginToRocketChat();
+        this.rocketChatChannel = this.roomjid.split('@')[0];
     }
 
     /* eslint-enable max-params */
@@ -644,6 +649,14 @@ export default class ChatRoom extends Listenable {
             }
         }
 
+        if (from === this.myroomjid) {
+            this.displayName = member.nick || (member.identity?.user?.name || 'Unknown');
+        } else if (this.members[from]) {
+            this.members[from].displayName = member.nick
+                || (member.identity?.user?.name
+                    || Strophe.getResourceFromJid(from));
+        }
+
         if (!this.joined && !this.inProgressEmitted) {
             const now = this.connectionTimes['muc.join.started'] = window.performance.now();
 
@@ -971,13 +984,105 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
+     * Login to Rocket Chat
+     */
+    async loginToRocketChat() {
+        try {
+            const token = this.xmpp.token;
+
+            console.log('participantId: ', this.participantId);
+
+            if (token) {
+                const response = await fetch(`${env.ipRocketChat}/api/v1/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        serviceName: 'keycloak',
+                        accessToken: token
+                    })
+                });
+                const data = await response.json();
+
+                console.log('Rocket chat data: ', data);
+
+                if (!data || !data.data || !data.data.userId || !data.data.authToken) {
+                    console.log('Invalid response from Rocket.Chat: Missing userId or authToken');
+                }
+                this.rocketChatUserId = data.data.userId;
+                this.rocketChatAuthToken = data.data.authToken;
+                this.rocketChatType = 'u';
+            } else {
+                this.rocketChatUserId = env.idBotRocketChat;
+                this.rocketChatAuthToken = env.tokenBotRocketChat;
+                this.rocketChatType = 'b';
+            }
+        } catch (error) {
+            console.error('Error logging into Rocket.Chat:', {
+                message: error.message,
+                name: error.name,
+                stack: error.stack,
+                cause: error.cause || 'Unknown'
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Send message to rocket chat room
+     * @param message
+     */
+    async sendMessageToRocketChat(message) {
+        const baseBody = {
+            roomId: `#${this.rocketChatChannel}`,
+            text: message,
+            customFields: {
+                participantId: this.participantId,
+                fromJitsi: true
+            }
+        };
+
+        const body = this.rocketChatType === 'b'
+            ? { ...baseBody,
+                alias: this.displayName }
+            : baseBody;
+
+        return fetch(`${env.ipRocketChat}/api/v1/chat.postMessage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Token': this.rocketChatAuthToken,
+                'X-User-Id': this.rocketChatUserId
+            },
+            body: JSON.stringify(body)
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            return response.json();
+        }).then(data => data.message._id).catch(error => {
+            console.error('Error sending message to Rocket.Chat:', {
+                message: error.message,
+                name: error.name,
+                stack: error.stack
+            });
+        });
+    }
+
+    /**
      * Send text message to the other participants in the conference
      * @param message
      * @param elementName
      */
-    sendMessage(message, elementName) {
-        const msg = $msg({ to: this.roomjid,
-            type: 'groupchat' });
+    async sendMessage(message, elementName) {
+        const messageRocketChatId = await this.sendMessageToRocketChat(message);
+        const msg = $msg({
+            to: this.roomjid,
+            type: 'groupchat',
+            id: messageRocketChatId
+        });
 
         // We are adding the message in a packet extension. If this element
         // is different from 'body', we add a custom namespace.
