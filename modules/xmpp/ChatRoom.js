@@ -990,7 +990,8 @@ export default class ChatRoom extends Listenable {
         try {
             const token = this.xmpp.token;
 
-            console.log('participantId: ', this.participantId);
+            console.log("Xmpp: ", this.xmpp);
+            console.log('Token: ', token);
 
             if (token) {
                 const response = await fetch(`${env.ipRocketChat}/api/v1/login`, {
