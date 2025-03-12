@@ -990,7 +990,6 @@ export default class ChatRoom extends Listenable {
         try {
             const token = this.xmpp.token;
 
-            console.log("Xmpp: ", this.xmpp);
             console.log('Token: ', token);
 
             if (token) {
@@ -1001,7 +1000,8 @@ export default class ChatRoom extends Listenable {
                     },
                     body: JSON.stringify({
                         serviceName: 'keycloak',
-                        accessToken: token
+                        accessToken: token,
+                        expiresIn: 24 * 60 * 60
                     })
                 });
                 const data = await response.json();
