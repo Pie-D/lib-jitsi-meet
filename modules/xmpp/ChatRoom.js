@@ -984,13 +984,30 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
+     * Decode token
+     * @param token
+     */
+    async decodeToken(token) {
+        const parts = token.split('.');
+
+        if (parts.length !== 3) {
+            throw new Error('Invalid JWT token format');
+        }
+
+        return JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    }
+
+    /**
      * Login to Rocket Chat
      */
     async loginToRocketChat() {
         try {
             const token = this.xmpp.token;
+            const decoded = await this.decodeToken(token);
+            const extractedToken = decoded?.context?.token || null;
 
-            console.log('Token: ', token);
+            console.log('Decoded Token: ', decoded);
+            console.log('Extracted Token: ', extractedToken);
 
             if (token) {
                 const response = await fetch(`${env.ipRocketChat}/api/v1/login`, {
@@ -1000,7 +1017,7 @@ export default class ChatRoom extends Listenable {
                     },
                     body: JSON.stringify({
                         serviceName: 'keycloak',
-                        accessToken: token,
+                        accessToken: extractedToken,
                         expiresIn: 24 * 60 * 60
                     })
                 });
