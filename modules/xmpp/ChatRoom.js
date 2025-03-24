@@ -1,6 +1,5 @@
 import { safeJsonParse } from '@jitsi/js-utils/json';
 import { getLogger } from '@jitsi/logger';
-import Redis from 'ioredis';
 import $ from 'jquery';
 import { isEqual } from 'lodash-es';
 import { $iq, $msg, $pres, Strophe } from 'strophe.js';
@@ -204,40 +203,9 @@ export default class ChatRoom extends Listenable {
         this.transcriptionStatus = JitsiTranscriptionStatus.OFF;
         this.initialDiscoRoomInfoReceived = false;
 
-        this.initRedis();
-        this.connectRedis();
         this.participantId = jid.split('/')[1];
         this.loginToRocketChat();
-        this.roomName = this.roomjid.split('@')[0];
-        this.getRocketChatRoomId(env.redisKey + this.roomName, roomId => {
-            this.rocketChatRoomId = roomId;
-        });
-    }
-
-    /**
-     * InitRedis
-     */
-    initRedis() {
-        this.redisClient = new Redis({
-            host: env.ipRedis,
-            port: env.redisPort,
-            password: env.redisPassword,
-            db: env.redisDatabase
-        });
-        this.subscriber = this.redisClient.duplicate();
-    }
-
-    /**
-     * Connect redis
-     */
-    async connectRedis() {
-        try {
-            await this.redisClient.connect();
-            await this.subscriber.connect();
-            logger.info('Connected to redis');
-        } catch (error) {
-            logger.error('Error when connect to redis: ', error);
-        }
+        this.rocketChatChannel = this.roomjid.split('@')[0];
     }
 
     /* eslint-enable max-params */
@@ -1080,41 +1048,12 @@ export default class ChatRoom extends Listenable {
     }
 
     /**
-     * Get rocket chat room id
-     * @param {string} key
-     * @param {function} callback
-     */
-    async getRocketChatRoomId(key, callback) {
-        const currentRoomId = await this.redisClient.get(key);
-
-        callback(currentRoomId);
-
-        const channel = `__keyspace@${this.redisClient.options.db}__:${key}`;
-
-        await this.subscriber.subscribe(channel);
-
-        this.subscriber.on('message', async (channelName, message) => {
-            if (channelName === channel) {
-                if (message === 'set') {
-                    const newRoomId = await this.redisClient.get(key);
-
-                    console.log('New roomId: ', newRoomId);
-                    callback(newRoomId);
-                } else if (message === 'del') {
-                    console.log(`Key "${key}" is deleted`);
-                    callback(null);
-                }
-            }
-        });
-    }
-
-    /**
      * Send message to rocket chat room
      * @param message
      */
     async sendMessageToRocketChat(message) {
         const baseBody = {
-            roomId: `#${this.rocketChatRoomId}`,
+            roomId: `#${this.rocketChatChannel}`,
             text: message,
             customFields: {
                 participantId: this.participantId,
