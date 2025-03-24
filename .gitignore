@@ -19,3 +19,4 @@ types/auto
 types/types-comparer/auto.json
 types/types-comparer/hand-crafted.json
 *.tgz
+package
