@@ -1003,13 +1003,13 @@ export default class ChatRoom extends Listenable {
     async loginToRocketChat() {
         try {
             const token = this.xmpp.token;
-            const decoded = await this.decodeToken(token);
-            const extractedToken = decoded?.context?.token || null;
-
-            console.log('Decoded Token: ', decoded);
-            console.log('Extracted Token: ', extractedToken);
 
             if (token) {
+                const decoded = await this.decodeToken(token);
+                const extractedToken = decoded?.context?.token || null;
+
+                console.log('Decoded Token: ', decoded);
+                console.log('Extracted Token: ', extractedToken);
                 const response = await fetch(`${env.ipRocketChat}/api/v1/login`, {
                     method: 'POST',
                     headers: {
