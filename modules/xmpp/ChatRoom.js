@@ -204,8 +204,10 @@ export default class ChatRoom extends Listenable {
         this.initialDiscoRoomInfoReceived = false;
 
         this.participantId = jid.split('/')[1];
-        this.loginToRocketChat();
-        this.rocketChatChannel = this.roomjid.split('@')[0];
+        this.loginToRocketChat().then(() => {
+            this.rocketChatChannel = this.roomjid.split('@')[0];
+            this.getRocketChatRoomId();
+        });
     }
 
     /* eslint-enable max-params */
@@ -1008,6 +1010,8 @@ export default class ChatRoom extends Listenable {
                 const decoded = await this.decodeToken(token);
                 const extractedToken = decoded?.context?.token || null;
 
+                this.tokenCmeet = extractedToken;
+
                 console.log('Decoded Token: ', decoded);
                 console.log('Extracted Token: ', extractedToken);
                 const response = await fetch(`${env.ipRocketChat}/api/v1/login`, {
@@ -1045,6 +1049,30 @@ export default class ChatRoom extends Listenable {
             });
             throw error;
         }
+    }
+
+    /**
+     * Get rocket chat room id from cmeet
+     */
+    async getRocketChatRoomId() {
+        if (!this.tokenCmeet) {
+            return;
+        }
+
+        await fetch(`${env.ipCMeet}/api/meeting-time-sheet/rocket-chat/${this.rocketChatChannel}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${this.tokenCmeet}`
+            }
+        }).then(response => {
+            if (!response.ok) {
+                logger.error('Failed to get room id from cmeet: ', response);
+            }
+
+            return response.json();
+        }).then(data => {
+            logger.info('Phuc: ', data);
+        });
     }
 
     /**
