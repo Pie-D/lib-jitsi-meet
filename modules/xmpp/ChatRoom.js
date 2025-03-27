@@ -1,7 +1,9 @@
 import { safeJsonParse } from '@jitsi/js-utils/json';
 import { getLogger } from '@jitsi/logger';
+import { Stomp } from '@stomp/stompjs';
 import $ from 'jquery';
 import { isEqual } from 'lodash-es';
+import SockJS from 'sockjs-client';
 import { $iq, $msg, $pres, Strophe } from 'strophe.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,6 +25,7 @@ import Lobby from './Lobby';
 import RoomMetadata from './RoomMetadata';
 import XmppConnection from './XmppConnection';
 import { FEATURE_TRANSCRIBER } from './xmpp';
+
 
 const logger = getLogger(__filename);
 
@@ -205,8 +208,14 @@ export default class ChatRoom extends Listenable {
 
         this.participantId = jid.split('/')[1];
         this.loginToRocketChat().then(() => {
-            this.rocketChatChannel = this.roomjid.split('@')[0];
-            this.getRocketChatRoomId();
+            this.cmeetMeetingId = this.roomjid.split('@')[0];
+            this.getRocketChatRoomId().then(roomId => {
+                this.rocketChatRoomId = roomId || this.cmeetMeetingId;
+                const event = new CustomEvent('rocketChatRoomIdReady', { detail: { roomId: this.rocketChatRoomId } });
+
+                document.dispatchEvent(event);
+                this.subscribeCMeetWebSocket();
+            });
         });
     }
 
@@ -1031,6 +1040,8 @@ export default class ChatRoom extends Listenable {
 
                 if (!data || !data.data || !data.data.userId || !data.data.authToken) {
                     console.log('Invalid response from Rocket.Chat: Missing userId or authToken');
+
+                    return;
                 }
                 this.rocketChatUserId = data.data.userId;
                 this.rocketChatAuthToken = data.data.authToken;
@@ -1047,19 +1058,18 @@ export default class ChatRoom extends Listenable {
                 stack: error.stack,
                 cause: error.cause || 'Unknown'
             });
-            throw error;
         }
     }
 
     /**
-     * Get rocket chat room id from cmeet
+     * Get rocket chat room id from C-meet
      */
     async getRocketChatRoomId() {
         if (!this.tokenCmeet) {
-            return;
+            return null;
         }
 
-        await fetch(`${env.ipCMeet}/api/meeting-time-sheet/rocket-chat/${this.rocketChatChannel}`, {
+        return await fetch(`${env.ipCMeet}/api/meeting-time-sheet/rocket-chat/${this.cmeetMeetingId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${this.tokenCmeet}`
@@ -1067,11 +1077,60 @@ export default class ChatRoom extends Listenable {
         }).then(response => {
             if (!response.ok) {
                 logger.error('Failed to get room id from cmeet: ', response);
+
+                return null;
             }
 
             return response.json();
         }).then(data => {
-            logger.info('Phuc: ', data);
+            logger.info('Rocket Chat room id: ', data.data);
+
+            return data?.data ?? null;
+        }).catch(error => {
+            logger.error('Failed to get room id from cmeet: ', error);
+
+            return null;
+        });
+    }
+
+    /**
+     * Lắng nghe C-meet WebSocket để lấy rocketChatRoomId
+     */
+    subscribeCMeetWebSocket() {
+        const socketUrl = env.wsCmeet;
+        const socket = new SockJS(socketUrl);
+        const stompClient = Stomp.over(socket);
+        const topic = `/topic/timesheet-rocketchat/${this.cmeetMeetingId}`;
+
+        stompClient.connect({}, () => {
+            logger.info('Connected to C-Meet WebSocket');
+
+            stompClient.subscribe(topic, messageEvent => {
+                try {
+                    const message = messageEvent.body;
+
+                    logger.info('Received message from C-Meet: ', message);
+
+                    const data = JSON.parse(message);
+
+                    if (data.rocketChatRoomId) {
+                        this.rocketChatRoomId = data.rocketChatRoomId;
+
+                        const event = new CustomEvent(
+                            'rocketChatRoomIdChanged',
+                            { detail: { roomId: this.rocketChatRoomId } });
+
+                        document.dispatchEvent(event);
+                    }
+                } catch (error) {
+                    logger.error('Error when receive message from C-Meet: ', error);
+                }
+            });
+        }, error => {
+            logger.error('Connection failed:', error);
+            this.rocketChatRoomId = null;
+            logger.warn('WebSocket closed, retrying connection in 5s...');
+            setTimeout(() => this.subscribeCMeetWebSocket(), 5000);
         });
     }
 
@@ -1081,7 +1140,7 @@ export default class ChatRoom extends Listenable {
      */
     async sendMessageToRocketChat(message) {
         const baseBody = {
-            roomId: `#${this.rocketChatChannel}`,
+            roomId: `#${this.rocketChatRoomId}`,
             text: message,
             customFields: {
                 participantId: this.participantId,
