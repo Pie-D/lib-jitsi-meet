@@ -1111,16 +1111,25 @@ export default class ChatRoom extends Listenable {
 
                     logger.info('Received message from C-Meet: ', message);
 
-                    const data = JSON.parse(message);
+                    if (message === 'TIMESHEET_END') {
+                        document.dispatchEvent(new CustomEvent(
+                            'timeSheetEnd',
+                            { detail: { isChatDisabled: true } }));
+                        logger.info('C-Meet Timesheet end');
+                    } else {
+                        const data = JSON.parse(message);
 
-                    if (data.rocketChatRoomId) {
-                        this.rocketChatRoomId = data.rocketChatRoomId;
+                        if (data.rocketChatRoomId) {
+                            this.rocketChatRoomId = data.rocketChatRoomId;
 
-                        const event = new CustomEvent(
-                            'rocketChatRoomIdChanged',
-                            { detail: { roomId: this.rocketChatRoomId } });
+                            document.dispatchEvent(new CustomEvent(
+                                'rocketChatRoomIdChanged',
+                                { detail: { roomId: this.rocketChatRoomId } }));
 
-                        document.dispatchEvent(event);
+                            document.dispatchEvent(new CustomEvent(
+                                'timeSheetEnd',
+                                { detail: { isChatDisabled: false } }));
+                        }
                     }
                 } catch (error) {
                     logger.error('Error when receive message from C-Meet: ', error);
