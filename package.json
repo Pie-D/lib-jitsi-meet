@@ -78,7 +78,8 @@
     "test": "karma start karma.conf.js",
     "test-watch": "karma start karma.conf.js --no-single-run",
     "validate": "npm ls",
-    "watch": "webpack --config webpack.config.js --watch --mode development"
+    "watch": "webpack --config webpack.config.js --watch --mode development",
+    "pack-custom": "npm run build && npm run gen-types && npm pack && mv lib-jitsi-meet-0.0.0.tgz lib-jitsi-meet.tgz"
   },
   "browser": "dist/umd/lib-jitsi-meet.min.js",
   "module": "dist/esm/JitsiMeetJS.js",

@@ -211,6 +211,7 @@ export default class ChatRoom extends Listenable {
             this.cmeetMeetingId = this.roomjid.split('@')[0];
             this.getRocketChatRoomId().then(roomId => {
                 this.rocketChatRoomId = roomId || this.cmeetMeetingId;
+                this.checkUserInRocketChatRoom();
                 const event = new CustomEvent('rocketChatRoomIdReady', { detail: { roomId: this.rocketChatRoomId } });
 
                 document.dispatchEvent(event);
@@ -1065,15 +1066,8 @@ export default class ChatRoom extends Listenable {
      * Get rocket chat room id from C-meet
      */
     async getRocketChatRoomId() {
-        if (!this.tokenCmeet) {
-            return null;
-        }
-
         return await fetch(`${env.ipCMeet}/api/meeting-time-sheet/rocket-chat/${this.cmeetMeetingId}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${this.tokenCmeet}`
-            }
+            method: 'GET'
         }).then(response => {
             if (!response.ok) {
                 logger.error('Failed to get room id from cmeet: ', response);
@@ -1091,6 +1085,89 @@ export default class ChatRoom extends Listenable {
 
             return null;
         });
+    }
+
+    /**
+     * Check if the user is already in the Rocket Chat room
+     */
+    async checkUserInRocketChatRoom() {
+        if (this.rocketChatType === 'b') {
+            return;
+        }
+
+        let username = null;
+
+        if (this.displayName && this.displayName !== 'Unknown') {
+            username = this.displayName;
+            logger.info('Using displayName as username:', username);
+        } 
+        else if (this.xmpp.token) {
+            try {
+                const decoded = await this.decodeToken(this.xmpp.token);
+                username = decoded?.context?.user?.name;
+                logger.info('Using name from token as username:', username);
+            } catch (error) {
+                logger.error('Error getting username from token:', error);
+            }
+        }
+
+        if (!username) {
+            username = this.participantId;
+            logger.info('Using participantId as username:', username);
+        }
+
+        logger.info('User identification info:', {
+            displayName: this.displayName,
+            participantId: this.participantId,
+            roomjid: this.roomjid,
+            myroomjid: this.myroomjid,
+            selectedUsername: username
+        });
+
+        const isUserInRoom = await fetch(`${env.ipRocketChat}/api/v1/groups.members?roomId=${this.rocketChatRoomId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Auth-Token': this.rocketChatAuthToken,
+                'X-User-Id': this.rocketChatUserId
+            }
+        }).then(response => {
+            if (!response.ok) {
+                logger.error('Failed to check user in Rocket Chat room: ', response);
+                return false;
+            }
+
+            return response.json();
+        }).then(data => {
+            if (data && data.members && Array.isArray(data.members)) {
+                logger.info('Room members received:', data.members.length);
+                
+                for (const member of data.members) {
+                    logger.info('Comparing:', { memberUsername: member.username, ourUsername: username });
+                    if (member.username === username) {
+                        logger.info('User found in Rocket Chat room');
+                        return true;
+                    }
+                }
+            } else {
+                logger.warn('Invalid member data from Rocket Chat:', data);
+            }
+
+            logger.info('User not in Rocket Chat room');
+            return false;
+        }).catch(error => {
+            logger.error('Error checking user in Rocket Chat room:', error);
+            return false;
+        });
+
+        if (!isUserInRoom) {
+            logger.info('Switching to bot credentials');
+            this.rocketChatUserId = env.idBotRocketChat;
+            this.rocketChatAuthToken = env.tokenBotRocketChat;
+            this.rocketChatType = 'b';
+        }
+        
+        return isUserInRoom;
     }
 
     /**
