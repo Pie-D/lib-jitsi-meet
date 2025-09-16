@@ -1,17 +1,16 @@
 import { getLogger } from '@jitsi/logger';
-import $ from 'jquery';
 import { cloneDeep } from 'lodash-es';
 import { $iq, Strophe } from 'strophe.js';
 
-import { MediaType } from '../../service/RTC/MediaType';
 import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 import RandomUtil from '../util/RandomUtil';
+import $ from '../util/XMLParser';
 
 import ConnectionPlugin from './ConnectionPlugin';
 import { expandSourcesFromJson } from './JingleHelperFunctions';
 import JingleSessionPC from './JingleSessionPC';
 
-const logger = getLogger(__filename);
+const logger = getLogger('xmpp:strophe.jingle');
 
 // XXX Strophe is build around the idea of chaining function calls so allow long
 // function call chains.
@@ -87,9 +86,9 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
         const fromJid = iq.getAttribute('from');
 
         // send ack first
-        const ack = $iq({ type: 'result',
+        const ack = $iq({ id: iq.getAttribute('id'),
             to: fromJid,
-            id: iq.getAttribute('id')
+            type: 'result'
         });
 
         let sess = this.sessions[sid];
@@ -178,19 +177,9 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
 
         switch (action) {
         case 'session-initiate': {
-            logger.log('(TIME) received session-initiate:\t', now);
-            const startMuted = $(iq).find('jingle>startmuted');
+            logger.info('(TIME) received session-initiate:\t', now);
 
             isP2P && logger.debug(`Received ${action} from ${fromJid}`);
-            if (startMuted?.length) {
-                const audioMuted = startMuted.attr(MediaType.AUDIO);
-                const videoMuted = startMuted.attr(MediaType.VIDEO);
-
-                this.eventEmitter.emit(
-                    XMPPEvents.START_MUTED_FROM_FOCUS,
-                    audioMuted === 'true',
-                    videoMuted === 'true');
-            }
             const pcConfig = isP2P ? this.p2pIceConfig : this.jvbIceConfig;
 
             sess
@@ -235,7 +224,7 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
             break;
         }
         case 'session-terminate': {
-            logger.log('terminating...', sess.sid);
+            logger.info('terminating...', sess.sid);
             let reasonCondition = null;
             let reasonText = null;
 
@@ -302,7 +291,7 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
      * @param reasonCondition
      * @param reasonText
      */
-    terminate(sid, reasonCondition, reasonText) {
+    terminate(sid, reasonCondition = undefined, reasonText = undefined) {
         if (this.sessions.hasOwnProperty(sid)) {
             if (this.sessions[sid].state !== 'ended') {
                 this.sessions[sid].onTerminated(reasonCondition, reasonText);
@@ -329,15 +318,15 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
         // TODO: implement refresh via updateIce as described in
         //      https://code.google.com/p/webrtc/issues/detail?id=1650
         this.connection.sendIQ(
-            $iq({ type: 'get',
-                to: this.xmpp.options.hosts.domain })
+            $iq({ to: this.xmpp.options.hosts.domain,
+                type: 'get' })
                 .c('services', { xmlns: 'urn:xmpp:extdisco:2' }),
             v2Res => this.onReceiveStunAndTurnCredentials(v2Res),
             () => {
                 logger.warn('getting turn credentials with extdisco:2 failed, trying extdisco:1');
                 this.connection.sendIQ(
-                    $iq({ type: 'get',
-                        to: this.xmpp.options.hosts.domain })
+                    $iq({ to: this.xmpp.options.hosts.domain,
+                        type: 'get' })
                         .c('services', { xmlns: 'urn:xmpp:extdisco:1' }),
                     v1Res => this.onReceiveStunAndTurnCredentials(v1Res),
                     () => {
@@ -462,6 +451,7 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
 
     /**
      * Returns the data saved in 'updateLog' in a format to be logged.
+     * @returns {Record<string, unknown>} An object containing the data to be logged.
      */
     getLog() {
         const data = {};
@@ -473,8 +463,8 @@ export default class JingleConnectionPlugin extends ConnectionPlugin {
             if (pc && pc.updateLog) {
                 // FIXME: should probably be a .dump call
                 data[`jingle_${sid}`] = {
-                    updateLog: pc.updateLog,
                     stats: pc.stats,
+                    updateLog: pc.updateLog,
                     url: window.location.href
                 };
             }

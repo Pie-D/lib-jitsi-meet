@@ -3,6 +3,7 @@
  */
 
 export enum JitsiConnectionEvents {
+
     /**
      * Indicates that the connection has been disconnected. The event provides
      * the following parameters to its listeners:
@@ -40,12 +41,6 @@ export enum JitsiConnectionEvents {
     CONNECTION_REDIRECTED = 'connection.redirected',
 
     /**
-     * Indicates that the performed action cannot be executed because the
-     * connection is not in the correct state(connected, disconnected, etc.)
-     */
-    WRONG_STATE = 'connection.wrongState',
-
-    /**
      * Indicates that the display name is required over this connection and need to be supplied when
      * joining the room.
      * There are cases like lobby room where display name is required.
@@ -56,7 +51,7 @@ export enum JitsiConnectionEvents {
      * Indicates that the connection properties have been updated.
      * @param properties {object} - All available connection properties (e.g. shard, region).
      */
-    PROPERTIES_UPDATED = 'connection.propertiesUpdated'
+    PROPERTIES_UPDATED = 'connection.propertiesUpdated',
 }
 
 // exported for backward compatibility
@@ -64,6 +59,5 @@ export const CONNECTION_DISCONNECTED = JitsiConnectionEvents.CONNECTION_DISCONNE
 export const CONNECTION_ESTABLISHED = JitsiConnectionEvents.CONNECTION_ESTABLISHED;
 export const CONNECTION_FAILED = JitsiConnectionEvents.CONNECTION_FAILED;
 export const CONNECTION_REDIRECTED = JitsiConnectionEvents.CONNECTION_REDIRECTED;
-export const WRONG_STATE = JitsiConnectionEvents.WRONG_STATE;
 export const DISPLAY_NAME_REQUIRED = JitsiConnectionEvents.DISPLAY_NAME_REQUIRED;
 export const PROPERTIES_UPDATED = JitsiConnectionEvents.PROPERTIES_UPDATED;

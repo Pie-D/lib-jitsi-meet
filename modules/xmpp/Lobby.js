@@ -3,7 +3,7 @@ import { $msg, Strophe } from 'strophe.js';
 
 import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 
-const logger = getLogger(__filename);
+const logger = getLogger('xmpp:Lobby');
 
 /**
  * The command type for updating a lobby participant's e-mail address.
@@ -324,7 +324,7 @@ export default class Lobby {
 
                     this.lobbyRoom.clean();
 
-                    return;
+
                 }
             });
 

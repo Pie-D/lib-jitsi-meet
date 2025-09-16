@@ -3,10 +3,11 @@
  */
 
 export enum JitsiConnectionErrors {
+
     /**
      * When the conference-request to jicofo fails.
      */
-    CONFERENCE_REQUEST_FAILED = "connection.conferenceRequestFailed",
+    CONFERENCE_REQUEST_FAILED = 'connection.conferenceRequestFailed',
 
     /**
      * Indicates that the connection was dropped with an error which was most likely
@@ -40,8 +41,13 @@ export enum JitsiConnectionErrors {
      * Indicates that the connection was dropped, because of too many 5xx HTTP
      * errors on BOSH requests.
      */
-    SERVER_ERROR = 'connection.serverError'
-};
+    SERVER_ERROR = 'connection.serverError',
+
+    /**
+     * Indicates that the connection was dropped, because of conference being moved to a new shard.
+     */
+    SHARD_CHANGED_ERROR = 'connection.shardChangedError'
+}
 
 // exported for backward compatibility
 export const CONFERENCE_REQUEST_FAILED = JitsiConnectionErrors.CONFERENCE_REQUEST_FAILED;
@@ -50,3 +56,4 @@ export const NOT_LIVE_ERROR = JitsiConnectionErrors.NOT_LIVE_ERROR;
 export const OTHER_ERROR = JitsiConnectionErrors.OTHER_ERROR;
 export const PASSWORD_REQUIRED = JitsiConnectionErrors.PASSWORD_REQUIRED;
 export const SERVER_ERROR = JitsiConnectionErrors.SERVER_ERROR;
+export const SHARD_CHANGED_ERROR = JitsiConnectionErrors.SHARD_CHANGED_ERROR;

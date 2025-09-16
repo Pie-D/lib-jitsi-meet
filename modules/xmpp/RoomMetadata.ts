@@ -6,7 +6,7 @@ import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 
 import { JITSI_MEET_MUC_TYPE } from './xmpp';
 
-const logger = getLogger(__filename);
+const logger = getLogger('xmpp:RoomMetadata');
 
 /**
  * Helper class for handling room metadata.
@@ -50,8 +50,8 @@ export default class RoomMetadata {
         }
 
         const message = {
-            key,
-            data
+            data,
+            key
         };
 
         this._sendMessage(message);
@@ -95,6 +95,7 @@ export default class RoomMetadata {
         }
 
         this._metadata = metadata;
+        logger.debug('Received metadata update', metadata);
         this.room.eventEmitter.emit(XMPPEvents.ROOM_METADATA_UPDATED, metadata);
     }
 

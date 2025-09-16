@@ -1,4 +1,5 @@
 import browser from '../../modules/browser';
+
 import { CodecMimeType } from './CodecMimeType';
 
 // Default value for assumed downlink bandwidth for the local endpoint which tells the bridge to use its own calculated
@@ -33,6 +34,7 @@ export const SIM_LAYERS = [
  * The ssrc-group semantics for SSRCs related to the video streams.
  */
 export enum SSRC_GROUP_SEMANTICS {
+
     // The semantics for group of SSRCs belonging to the same stream, primary and RTX.
     FID = 'FID',
 
@@ -46,55 +48,55 @@ export enum SSRC_GROUP_SEMANTICS {
 export const STANDARD_CODEC_SETTINGS = {
     av1: {
         maxBitratesVideo: {
-            low: 100000,
-            standard: 300000,
-            high: 1000000,
             fullHd: 2000000,
-            ultraHd: 4000000,
+            high: 1000000,
+            low: 100000,
+            none: 0,
             ssHigh: 2500000,
-            none: 0
+            standard: 300000,
+            ultraHd: 4000000
         },
         scalabilityModeEnabled: browser.supportsScalabilityModeAPI(),
-        useSimulcast: false, // defaults to SVC.
-        useKSVC: true // defaults to L3T3_KEY for SVC mode.
+        useKSVC: browser.supportsSVC(),
+        useSimulcast: !browser.supportsSVC(),
     },
     h264: {
         maxBitratesVideo: {
-            low: 400000,
-            standard: 800000,
-            high: 2000000,
             fullHd: 4000000,
-            ultraHd: 8000000,
+            high: 2000000,
+            low: 400000,
+            none: 0,
             ssHigh: 2500000,
-            none: 0
+            standard: 800000,
+            ultraHd: 8000000,
         },
         scalabilityModeEnabled: browser.supportsScalabilityModeAPI()
     },
     vp8: {
         maxBitratesVideo: {
-            low: 200000,
-            standard: 500000,
-            high: 1500000,
             fullHd: 3000000,
-            ultraHd: 6000000,
+            high: 1500000,
+            low: 200000,
+            none: 0,
             ssHigh: 2500000,
-            none: 0
+            standard: 500000,
+            ultraHd: 6000000,
         },
         scalabilityModeEnabled: false
     },
     vp9: {
         maxBitratesVideo: {
-            low: 100000,
-            standard: 300000,
-            high: 1200000,
             fullHd: 2500000,
-            ultraHd: 5000000,
+            high: 1200000,
+            low: 100000,
+            none: 0,
             ssHigh: 2500000,
-            none: 0
+            standard: 300000,
+            ultraHd: 5000000
         },
         scalabilityModeEnabled: browser.supportsScalabilityModeAPI(),
-        useSimulcast: false, // defaults to SVC.
-        useKSVC: true // defaults to L3T3_KEY for SVC mode.
+        useKSVC: browser.supportsSVC(),
+        useSimulcast: !browser.supportsSVC(),
     }
 };
 
@@ -104,12 +106,12 @@ export const STANDARD_CODEC_SETTINGS = {
  * next codec in the list.
  */
 export const VIDEO_CODECS_BY_COMPLEXITY = {
-    'camera' : [
+    'camera': [
         CodecMimeType.AV1,
         CodecMimeType.VP9,
         CodecMimeType.VP8
     ],
-    'desktop' : [
+    'desktop': [
         CodecMimeType.VP9,
         CodecMimeType.VP8,
         CodecMimeType.AV1
@@ -172,8 +174,6 @@ export const VIDEO_QUALITY_LEVELS = [
  * Enumerate the supported video resolutions.
  */
 export enum VIDEO_QUALITY_SETTINGS {
-    // 3840x2160 or 4k.
-    ULTRA = 'ultraHd',
 
     // 1920x1080 or full High Definition.
     FULL = 'fullHd',
@@ -181,12 +181,15 @@ export enum VIDEO_QUALITY_SETTINGS {
     // 1280x720 or High Definition.
     HIGH = 'high',
 
-    // 640x360 or Standard Definition.
-    STANDARD = 'standard',
-
     // 320x180 or Low Definition.
     LOW = 'low',
 
     // When the camera is turned off.
-    NONE = 'none'
+    NONE = 'none',
+
+    // 640x360 or Standard Definition.
+    STANDARD = 'standard',
+
+    // 3840x2160 or 4k.
+    ULTRA = 'ultraHd'
 }

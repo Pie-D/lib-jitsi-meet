@@ -1,40 +1,14 @@
-/* global __dirname */
-
-const { execSync } = require('child_process');
-const path = require('path');
-const process = require('process');
 const { IgnorePlugin, ProvidePlugin } = require('webpack');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
-const devNull = process.platform === 'win32' ? 'nul' : '/dev/null';
-const commitHash = process.env.LIB_JITSI_MEET_COMMIT_HASH
-    || execSync(`git rev-parse --short HEAD 2>${devNull} || echo development`)
-        .toString()
-        .trim();
 
 module.exports = (minimize, analyzeBundle) => {
     return {
         // The inline-source-map is used to allow debugging the unit tests with Karma
         devtool: minimize ? 'source-map' : 'inline-source-map',
-        resolve: {
-            alias: {
-                'jquery': require.resolve('jquery/dist/jquery.slim.min.js')
-            },
-            extensions: [ '', '.js', '.ts' ]
-        },
         mode: minimize ? 'production' : 'development',
         module: {
             rules: [ {
-                // Version this build of the lib-jitsi-meet library.
-
-                loader: 'string-replace-loader',
-                options: {
-                    flags: 'g',
-                    replace: commitHash,
-                    search: '{#COMMIT_HASH#}'
-                },
-                test: path.join(__dirname, 'JitsiMeetJS.ts')
-            }, {
                 // Transpile ES2015 (aka ES6) to ES5.
 
                 loader: 'babel-loader',
@@ -65,12 +39,6 @@ module.exports = (minimize, analyzeBundle) => {
                 test: /\.(js|ts)$/
             } ]
         },
-        node: {
-            // Allow the use of the real filename of the module being executed. By
-            // default Webpack does not leak path-related information and provides a
-            // value that is a mock (/index.js).
-            __filename: true
-        },
         optimization: {
             concatenateModules: minimize
         },
@@ -94,6 +62,12 @@ module.exports = (minimize, analyzeBundle) => {
                 && new ProvidePlugin({
                     process: require.resolve('process/browser')
                 })
-        ].filter(Boolean)
+        ].filter(Boolean),
+        resolve: {
+            alias: {
+                'jquery': require.resolve('jquery/dist/jquery.slim.min.js')
+            },
+            extensions: [ '', '.js', '.ts' ]
+        }
     };
 };

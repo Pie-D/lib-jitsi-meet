@@ -1,9 +1,10 @@
 import { getLogger } from '@jitsi/logger';
 import { cloneDeep, isEqual } from 'lodash-es';
 
-import * as JitsiConferenceEvents from '../../JitsiConferenceEvents';
+import { JitsiConferenceEvents } from '../../JitsiConferenceEvents';
 import { MediaType } from '../../service/RTC/MediaType';
-import RTCEvents from '../../service/RTC/RTCEvents';
+import { RTCEvents } from '../../service/RTC/RTCEvents';
+import { VideoType } from '../../service/RTC/VideoType';
 import browser from '../browser';
 import Listenable from '../util/Listenable';
 import { safeCounterIncrement } from '../util/MathUtil';
@@ -14,7 +15,7 @@ import RTCUtils from './RTCUtils';
 import TraceablePeerConnection from './TraceablePeerConnection';
 
 
-const logger = getLogger(__filename);
+const logger = getLogger('rtc:RTC');
 
 /**
  * The counter used to generated id numbers assigned to peer connections
@@ -66,6 +67,7 @@ function _createLocalTracks(mediaStreamMetaData = []) {
         return new JitsiLocalTrack({
             constraints,
             deviceId,
+            effects,
             facingMode,
             mediaType: track.kind,
             rtcId: rtcTrackIdCounter,
@@ -73,8 +75,7 @@ function _createLocalTracks(mediaStreamMetaData = []) {
             sourceType,
             stream,
             track,
-            videoType: videoType || null,
-            effects
+            videoType: videoType || null
         });
     });
 }
@@ -373,7 +374,7 @@ export default class RTC extends Listenable {
      * @return {TraceablePeerConnection}
      */
     createPeerConnection(signaling, pcConfig, isP2P, options) {
-        const pcConstraints = cloneDeep(RTCUtils.pcConstraints);
+        const pcConstraints = {};
 
         if (options.enableInsertableStreams) {
             logger.debug('E2EE - setting insertable streams constraints');
@@ -492,14 +493,12 @@ export default class RTC extends Listenable {
      * (audio or video).
      */
     getLocalTracks(mediaType) {
-        let tracks = this.localTracks.slice();
-
-        if (mediaType !== undefined) {
-            tracks = tracks.filter(
-                track => track.getType() === mediaType);
+        if (!mediaType) {
+            return this.localTracks.slice();
         }
 
-        return tracks;
+        return this.localTracks.filter(
+                track => track.getType() === mediaType);
     }
 
     /**
@@ -524,38 +523,45 @@ export default class RTC extends Listenable {
 
     /**
      * Set mute for all local audio streams attached to the conference.
-     * @param value The mute value.
      * @returns {Promise}
      */
-    setAudioMute(value) {
+    setAudioMute() {
         const mutePromises = [];
 
         this.getLocalTracks(MediaType.AUDIO).forEach(audioTrack => {
-            // this is a Promise
-            mutePromises.push(value ? audioTrack.mute() : audioTrack.unmute());
+            mutePromises.push(audioTrack.mute());
         });
 
-        // We return a Promise from all Promises so we can wait for their
-        // execution.
         return Promise.all(mutePromises);
     }
 
     /**
     * Set mute for all local video streams attached to the conference.
-    * @param value The mute value.
     * @returns {Promise}
     */
-    setVideoMute(value) {
+    setVideoMute() {
         const mutePromises = [];
+        const tracks = this.localTracks.filter(
+                track => track.getType() === MediaType.VIDEO
+                && track.getVideoType() === VideoType.CAMERA);
 
-        this.getLocalTracks(MediaType.VIDEO)
-            .forEach(videoTrack => {
-                // this is a Promise
-                mutePromises.push(value ? videoTrack.mute() : videoTrack.unmute());
-            });
+        tracks.forEach(track => mutePromises.push(track.mute()));
 
-        // We return a Promise from all Promises so we can wait for their
-        // execution.
+        return Promise.all(mutePromises);
+    }
+
+    /**
+    * Set mute for all local desktop video streams attached to the conference.
+    * @returns {Promise}
+    */
+    setDesktopMute() {
+        const mutePromises = [];
+        const tracks = this.localTracks.filter(
+                track => track.getType() === MediaType.VIDEO
+                && track.getVideoType() === VideoType.DESKTOP);
+
+        tracks.forEach(track => mutePromises.push(track.mute()));
+
         return Promise.all(mutePromises);
     }
 
@@ -580,14 +586,6 @@ export default class RTC extends Listenable {
      */
     static attachMediaStream(elSelector, stream) {
         return RTCUtils.attachMediaStream(elSelector, stream);
-    }
-
-    /**
-     * Returns true if retrieving the list of input devices is supported
-     * and false if not.
-     */
-    static isDeviceListAvailable() {
-        return RTCUtils.isDeviceListAvailable();
     }
 
     /**
@@ -735,6 +733,16 @@ export default class RTC extends Listenable {
     sendEndpointStatsMessage(payload) {
         if (this._channel && this._channel.isOpen()) {
             this._channel.sendEndpointStatsMessage(payload);
+        }
+    }
+
+    /**
+     * Sends a receiver audio subscription message.
+     * @param {*} message
+     */
+    sendReceiverAudioSubscriptionMessage(message) {
+        if (this._channel && this._channel.isOpen()) {
+            this._channel.sendReceiverAudioSubscriptionMessage(message);
         }
     }
 

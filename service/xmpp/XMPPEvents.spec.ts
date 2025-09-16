@@ -14,6 +14,7 @@ describe( "/service/xmpp/XMPPEvents members", () => {
         expect( XMPPEvents.ADD_ICE_CANDIDATE_FAILED ).toBe( 'xmpp.add_ice_candidate_failed' );
         expect( XMPPEvents.AUDIO_MUTED_BY_FOCUS ).toBe( 'xmpp.audio_muted_by_focus' );
         expect( XMPPEvents.VIDEO_MUTED_BY_FOCUS ).toBe( 'xmpp.video_muted_by_focus' );
+        expect( XMPPEvents.DESKTOP_MUTED_BY_FOCUS ).toBe( 'xmpp.desktop_muted_by_focus' );
         expect( XMPPEvents.AUTHENTICATION_REQUIRED ).toBe( 'xmpp.authentication_required' );
         expect( XMPPEvents.BRIDGE_DOWN ).toBe( 'xmpp.bridge_down' );
         expect( XMPPEvents.CALL_ACCEPTED ).toBe( 'xmpp.callaccepted.jingle' );
@@ -27,12 +28,15 @@ describe( "/service/xmpp/XMPPEvents members", () => {
         expect( XMPPEvents.CONNECTION_INTERRUPTED ).toBe( 'xmpp.connection.interrupted' );
         expect( XMPPEvents.CONNECTION_RESTORED ).toBe( 'xmpp.connection.restored' );
         expect( XMPPEvents.CONNECTION_ICE_FAILED ).toBe( 'xmpp.connection.ice.failed' );
-        expect( XMPPEvents.CONNECTION_RESTARTED ).toBe( 'xmpp.connection.restart' );
         expect( XMPPEvents.CONNECTION_STATUS_CHANGED ).toBe( 'xmpp.connection.status.changed' );
         expect( XMPPEvents.DISPLAY_NAME_CHANGED ).toBe( 'xmpp.display_name_changed' );
         expect( XMPPEvents.EMUC_ROOM_ADDED ).toBe( 'xmpp.emuc_room_added' );
         expect( XMPPEvents.EMUC_ROOM_REMOVED ).toBe( 'xmpp.emuc_room_removed' );
         expect( XMPPEvents.ETHERPAD ).toBe( 'xmpp.etherpad' );
+        expect( XMPPEvents.FILE_SHARING_EVENT ).toBe( 'xmpp.files-sharing.event' );
+        expect( XMPPEvents.FILE_SHARING_FILES_RECEIVED ).toBe( 'xmpp.files-sharing.list' );
+        expect( XMPPEvents.FILE_SHARING_FILE_ADDED ).toBe( 'xmpp.files-sharing.add' );
+        expect( XMPPEvents.FILE_SHARING_FILE_REMOVED ).toBe( 'xmpp.files-sharing.remove' );
         expect( XMPPEvents.FOCUS_DISCONNECTED ).toBe( 'xmpp.focus_disconnected' );
         expect( XMPPEvents.FOCUS_LEFT ).toBe( 'xmpp.focus_left' );
         expect( XMPPEvents.GRACEFUL_SHUTDOWN ).toBe( 'xmpp.graceful_shutdown' );
@@ -69,8 +73,6 @@ describe( "/service/xmpp/XMPPEvents members", () => {
         expect( XMPPEvents.READY_TO_JOIN ).toBe( 'xmpp.ready_to_join' );
         expect( XMPPEvents.RECORDER_STATE_CHANGED ).toBe( 'xmpp.recorderStateChanged' );
         expect( XMPPEvents.REMOTE_STATS ).toBe( 'xmpp.remote_stats' );
-        expect( XMPPEvents.RENEGOTIATION_FAILED ).toBe( 'xmpp.renegotiation_failed' );
-        expect( XMPPEvents.RESERVATION_ERROR ).toBe( 'xmpp.room_reservation_error' );
         expect( XMPPEvents.ROOM_CONNECT_ERROR ).toBe( 'xmpp.room_connect_error' );
         expect( XMPPEvents.ROOM_CONNECT_NOT_ALLOWED_ERROR ).toBe( 'xmpp.room_connect_error.not_allowed' );
         expect( XMPPEvents.ROOM_JOIN_ERROR ).toBe( 'xmpp.room_join_error' );
@@ -98,7 +100,6 @@ describe( "/service/xmpp/XMPPEvents members", () => {
         expect( XMPPEvents.BREAKOUT_ROOMS_UPDATED ).toBe( 'xmpp.breakout-rooms.updated' );
         expect( XMPPEvents.ROOM_METADATA_EVENT ).toBe( 'xmpp.room-metadata.event' );
         expect( XMPPEvents.ROOM_METADATA_UPDATED ).toBe( 'xmpp.room-metadata.updated' );
-        expect( XMPPEvents.START_MUTED_FROM_FOCUS ).toBe( 'xmpp.start_muted_from_focus' );
         expect( XMPPEvents.SUBJECT_CHANGED ).toBe( 'xmpp.subject_changed' );
         expect( XMPPEvents.SUSPEND_DETECTED ).toBe( 'xmpp.suspend_detected' );
         expect( XMPPEvents.TRANSCRIPTION_STATUS_CHANGED ).toBe( 'xmpp.transcription_status_changed' );

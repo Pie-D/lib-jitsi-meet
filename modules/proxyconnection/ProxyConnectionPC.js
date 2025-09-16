@@ -1,6 +1,6 @@
 import { getLogger } from '@jitsi/logger';
 
-import RTCEvents from '../../service/RTC/RTCEvents';
+import { RTCEvents } from '../../service/RTC/RTCEvents';
 import { XMPPEvents } from '../../service/xmpp/XMPPEvents';
 import RTC from '../RTC/RTC';
 import JingleSessionPC from '../xmpp/JingleSessionPC';
@@ -9,7 +9,7 @@ import { DEFAULT_STUN_SERVERS } from '../xmpp/xmpp';
 import CustomSignalingLayer from './CustomSignalingLayer';
 import { ACTIONS } from './constants';
 
-const logger = getLogger(__filename);
+const logger = getLogger('proxyconnection:ProxyConnectionPC');
 
 /**
  * An adapter around {@code JingleSessionPC} so its logic can be re-used without
@@ -36,8 +36,8 @@ export default class ProxyConnectionPC {
      */
     constructor(options = {}) {
         this._options = {
-            pcConfig: {},
             isInitiator: false,
+            pcConfig: {},
             receiveAudio: false,
             receiveVideo: false,
             ...options
@@ -163,18 +163,15 @@ export default class ProxyConnectionPC {
         const connectionStub = {
             // At the time this is used for Spot and it's okay to say the connection is always connected, because if
             // spot has no signalling it will not be in a meeting where this is used.
+            // eslint-disable-next-line no-empty-function
+            addCancellableListener: () => () => { },
+            // eslint-disable-next-line no-empty-function
+            addEventListener: () => () => { },
             connected: true,
             jingle: {
                 terminate: () => { /** no-op */ }
             },
-            sendIQ: this._onSendMessage,
-
-            // Returns empty function, because it does not add any listeners for real.
-            // eslint-disable-next-line no-empty-function
-            addEventListener: () => () => { },
-
-            // eslint-disable-next-line no-empty-function
-            addCancellableListener: () => () => { }
+            sendIQ: this._onSendMessage
         };
 
         /**
@@ -332,7 +329,7 @@ export default class ProxyConnectionPC {
      * The passed in jingle element should contain an SDP answer to a previously
      * sent SDP offer.
      *
-     * @param {Object} $jingle - The jingle element wrapped in jQuery.
+     * @param {Object} $jingle - The jingle element.
      * @private
      * @returns {void}
      */
@@ -350,7 +347,7 @@ export default class ProxyConnectionPC {
      * Callback invoked in response to a request to start a proxy connection.
      * The passed in jingle element should contain an SDP offer.
      *
-     * @param {Object} $jingle - The jingle element wrapped in jQuery.
+     * @param {Object} $jingle - The jingle element.
      * @private
      * @returns {void}
      */
@@ -404,7 +401,7 @@ export default class ProxyConnectionPC {
      * Callback invoked in response to ICE candidates from the remote peer.
      * The passed in jingle element should contain an ICE candidate.
      *
-     * @param {Object} $jingle - The jingle element wrapped in jQuery.
+     * @param {Object} $jingle - The jingle element.
      * @private
      * @returns {void}
      */

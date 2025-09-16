@@ -1,7 +1,7 @@
 import { getLogger } from '@jitsi/logger';
-import $ from 'jquery';
 import { $iq } from 'strophe.js';
 
+import $ from '../../modules/util/XMLParser';
 import { MediaType } from '../../service/RTC/MediaType';
 import { getSourceNameForJitsiTrack } from '../../service/RTC/SignalingLayer';
 import { VideoType } from '../../service/RTC/VideoType';
@@ -10,7 +10,7 @@ import RTC from '../RTC/RTC';
 import ProxyConnectionPC from './ProxyConnectionPC';
 import { ACTIONS } from './constants';
 
-const logger = getLogger(__filename);
+const logger = getLogger('proxyconnection:ProxyConnectionService');
 
 /**
  * Instantiates a new ProxyConnectionPC and ensures only one exists at a given
@@ -121,7 +121,7 @@ export default class ProxyConnectionService {
             this._selfCloseConnection();
         }
 
-        return;
+
     }
 
     /**
@@ -162,11 +162,11 @@ export default class ProxyConnectionService {
     }
 
     /**
-     * Transforms a stringified xML into a XML wrapped in jQuery.
+     * Transforms a stringified xML into a XML element.
      *
      * @param {string} xml - The XML in string form.
      * @private
-     * @returns {Object|null} A jQuery version of the xml. Null will be returned
+     * @returns {Object|null} An element version of the xml. Null will be returned
      * if an error is encountered during transformation.
      */
     _convertStringToXML(xml) {
@@ -198,10 +198,10 @@ export default class ProxyConnectionService {
         }
 
         const pcOptions = {
-            pcConfig: this._options.pcConfig,
             onError: this._onFatalError,
             onRemoteStream: this._onRemoteStream,
             onSendMessage: this._onSendMessage,
+            pcConfig: this._options.pcConfig,
             peerJid,
             ...options
         };
@@ -232,8 +232,8 @@ export default class ProxyConnectionService {
             type: 'set'
         })
             .c('jingle', {
-                xmlns: 'urn:xmpp:jingle:1',
-                action: errorType
+                action: errorType,
+                xmlns: 'urn:xmpp:jingle:1'
             })
             .c('details')
             .t(details)

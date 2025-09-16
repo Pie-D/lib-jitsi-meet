@@ -1,13 +1,13 @@
 import { getLogger } from '@jitsi/logger';
 import { debounce } from 'lodash-es';
 
-import * as JitsiConferenceEvents from '../../JitsiConferenceEvents';
+import { JitsiConferenceEvents } from '../../JitsiConferenceEvents';
 
 import { KeyHandler } from './KeyHandler';
 import { OlmAdapter } from './OlmAdapter';
 import { importKey, ratchet } from './crypto-utils';
 
-const logger = getLogger(__filename);
+const logger = getLogger('e2ee:ManagedKeyHandler');
 
 // Period which we'll wait before updating / rotating our keys when a participant
 // joins or leaves.
@@ -106,7 +106,7 @@ export class ManagedKeyHandler extends KeyHandler {
      * @param {*} newValue - The property's new value.
      * @private
      */
-    async _onParticipantPropertyChanged(participant, name, oldValue, newValue) {
+    _onParticipantPropertyChanged(participant, name, oldValue, newValue) {
         switch (name) {
         case 'e2ee.idKey':
             logger.debug(`Participant ${participant.getId()} updated their id key: ${newValue}`);
@@ -208,7 +208,6 @@ export class ManagedKeyHandler extends KeyHandler {
     _onParticipantSasAvailable(pId) {
         this.conference.eventEmitter.emit(JitsiConferenceEvents.E2EE_VERIFICATION_AVAILABLE, pId);
     }
-
 
     /**
      * Handles the SAS completed event.

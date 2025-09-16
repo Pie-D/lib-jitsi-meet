@@ -1,12 +1,12 @@
 import { getLogger } from '@jitsi/logger';
 
-const logger = getLogger(__filename);
+const logger = getLogger('misc:ComponentsVersions');
 
 /**
  * Discovers component versions in a conference.
  */
 export default class ComponentsVersions {
-    versions: {[key: string]: string};
+    versions: { [key: string]: string; };
     conference: any;
 
     /**

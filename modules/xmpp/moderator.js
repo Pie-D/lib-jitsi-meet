@@ -1,18 +1,18 @@
 /* eslint-disable newline-per-chained-call */
 import { getLogger } from '@jitsi/logger';
-import $ from 'jquery';
 import { $iq } from 'strophe.js';
 
 import { CONFERENCE_REQUEST_FAILED, NOT_LIVE_ERROR } from '../../JitsiConnectionErrors';
 import { CONNECTION_FAILED, CONNECTION_REDIRECTED } from '../../JitsiConnectionEvents';
 import Settings from '../settings/Settings';
 import Listenable from '../util/Listenable';
+import $ from '../util/XMLParser';
 
 const AuthenticationEvents
     = require('../../service/authentication/AuthenticationEvents');
 const { XMPPEvents } = require('../../service/xmpp/XMPPEvents');
 
-const logger = getLogger(__filename);
+const logger = getLogger('xmpp:Moderator');
 
 /**
  * Exponential backoff timer.
@@ -181,8 +181,8 @@ export default class Moderator extends Listenable {
         }
 
         const conferenceRequest = {
-            properties,
             machineUid: Settings.machineId,
+            properties,
             room: roomJid
         };
 
@@ -216,9 +216,10 @@ export default class Moderator extends Listenable {
         });
 
         elem.c('conference', {
-            xmlns: 'http://jitsi.org/protocol/focus',
+            'machine-uid': conferenceRequest.machineUid,
             room: roomJid,
-            'machine-uid': conferenceRequest.machineUid
+            token: this.xmpp.token,
+            xmlns: 'http://jitsi.org/protocol/focus'
         });
 
         if (conferenceRequest.sessionId) {
@@ -321,9 +322,12 @@ export default class Moderator extends Listenable {
             } else {
                 logger.info(`Sending conference request over HTTP to ${this.targetUrl}`);
                 fetch(this.targetUrl, {
-                    method: 'POST',
                     body: JSON.stringify(this._createConferenceRequest(roomJid)),
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...this.xmpp.token ? { 'Authorization': `Bearer ${this.xmpp.token}` } : {}
+                    },
+                    method: 'POST'
                 })
                     .then(response => {
                         if (!response.ok) {
@@ -397,7 +401,7 @@ export default class Moderator extends Listenable {
         this.sipGatewayEnabled = conferenceRequest.properties.sipGatewayEnabled;
         logger.info(`Sip gateway enabled: ${this.sipGatewayEnabled}`);
 
-        if (conferenceRequest.properties.live === 'false' && this.options.preferVisitor) {
+        if (conferenceRequest.properties.live === 'false') {
             this.getNextTimeout(true);
 
             logger.info('Conference is not live.');
@@ -604,8 +608,8 @@ export default class Moderator extends Listenable {
             return;
         }
         iq.c('logout', {
-            xmlns: 'http://jitsi.org/protocol/focus',
-            'session-id': sessionId
+            'session-id': sessionId,
+            xmlns: 'http://jitsi.org/protocol/focus'
         });
         this.connection.sendIQ(
             iq,
