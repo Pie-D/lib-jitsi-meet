@@ -331,7 +331,7 @@ export default class ChatRoom extends Listenable {
         this.locked = false;
         this.transcriptionStatus = JitsiTranscriptionStatus.OFF;
         this.initialDiscoRoomInfoReceived = false;
-1
+
         this.participantId = jid.split('/')[1];
         this.loginToRocketChat().then(() => {
             this.cmeetMeetingId = this.roomjid.split('@')[0];
