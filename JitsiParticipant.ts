@@ -423,4 +423,30 @@ export default class JitsiParticipant {
     supportsDTMF(): boolean {
         return this._supportsDTMF;
     }
+
+    /**
+     * Gets immersive view enabled state.
+     * @returns {boolean|undefined} The immersive view enabled state.
+     */
+    getImmersiveViewEnabled(): Optional<boolean> {
+        const property = this.getProperty('immersive_view_enabled');
+        return property ? property === 'true' : undefined;
+    }
+
+    /**
+     * Gets immersive view template.
+     * @returns {string|undefined} The immersive view template.
+     */
+    getImmersiveViewTemplate(): Optional<string> {
+        return this.getProperty('immersive_view_template');
+    }
+
+    /**
+     * Gets immersive view slot count.
+     * @returns {number|undefined} The immersive view slot count.
+     */
+    getImmersiveViewSlotCount(): Optional<number> {
+        const property = this.getProperty('immersive_view_slot_count');
+        return property ? parseInt(property, 10) : undefined;
+    }
 }

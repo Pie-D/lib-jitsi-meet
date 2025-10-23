@@ -323,6 +323,29 @@ export default class JitsiConferenceEventManager {
             }
 
             participant.setProperty(prop, value);
+
+            // Handle immersive view properties
+            if (prop === 'immersive_view_enabled') {
+                console.log('🎯 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_ENABLED:', participant.getId(), value === 'true');
+                console.log('🎯 [JitsiConferenceEventManager] Participant details:', {
+                    id: participant.getId(),
+                    role: participant.getRole(),
+                    name: participant.getDisplayName()
+                });
+                conference.eventEmitter.emit(
+                    JitsiConferenceEvents.IMMERSIVE_VIEW_ENABLED,
+                    participant.getId(), value === 'true');
+            } else if (prop === 'immersive_view_template') {
+                console.log('🎨 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_TEMPLATE_CHANGED:', participant.getId(), value);
+                conference.eventEmitter.emit(
+                    JitsiConferenceEvents.IMMERSIVE_VIEW_TEMPLATE_CHANGED,
+                    participant.getId(), value);
+            } else if (prop === 'immersive_view_slot_count') {
+                console.log('📊 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_SLOT_COUNT_CHANGED:', participant.getId(), parseInt(value, 10));
+                conference.eventEmitter.emit(
+                    JitsiConferenceEvents.IMMERSIVE_VIEW_SLOT_COUNT_CHANGED,
+                    participant.getId(), parseInt(value, 10));
+            }
         });
 
         chatRoom.addListener(XMPPEvents.KICKED,
@@ -439,6 +462,14 @@ export default class JitsiConferenceEventManager {
                 const participant = conference.getParticipantById(id);
 
                 if (participant) {
+                    // Handle immersive view assignments
+                    if (payload.name === 'immersive-view-assignments') {
+                        console.log('👥 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_ASSIGNMENTS_CHANGED:', participant.getId(), payload.assignments);
+                        conference.eventEmitter.emit(
+                            JitsiConferenceEvents.IMMERSIVE_VIEW_ASSIGNMENTS_CHANGED,
+                            participant.getId(), payload.assignments);
+                    }
+
                     conference.eventEmitter.emit(
                         JitsiConferenceEvents.ENDPOINT_MESSAGE_RECEIVED,
                         participant, payload);

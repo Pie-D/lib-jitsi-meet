@@ -4672,4 +4672,131 @@ export default class JitsiConference extends Listenable {
     get xmpp(): XMPP {
         return this._xmpp;
     }
+
+    /**
+     * Sets immersive view enabled state for the local participant.
+     * Only moderators can enable/disable immersive view.
+     * @param {boolean} enabled - Whether immersive view is enabled.
+     * @returns {void}
+     */
+    public setImmersiveViewEnabled(enabled: boolean): void {
+        console.log('🎯 [JitsiConference] setImmersiveViewEnabled called:', enabled);
+        
+        // Check if local participant is moderator
+        if (!this.isModerator()) {
+            console.log('❌ [JitsiConference] Only moderators can enable/disable immersive view');
+            logger.warn('Only moderators can enable/disable immersive view');
+            return;
+        }
+
+        console.log('✅ [JitsiConference] Moderator setting immersive view enabled:', enabled);
+        console.log('🔧 [JitsiConference] Calling setLocalParticipantProperty with:', 'immersive_view_enabled', enabled.toString());
+        this.setLocalParticipantProperty('immersive_view_enabled', enabled.toString());
+        console.log('✅ [JitsiConference] setLocalParticipantProperty completed');
+    }
+
+    /**
+     * Sets immersive view template for the local participant.
+     * Only moderators can change immersive view template.
+     * @param {string} templateId - The template ID.
+     * @returns {void}
+     */
+    public setImmersiveViewTemplate(templateId: string): void {
+        console.log('🎨 [JitsiConference] setImmersiveViewTemplate called:', templateId);
+        
+        // Check if local participant is moderator
+        if (!this.isModerator()) {
+            console.log('❌ [JitsiConference] Only moderators can change immersive view template');
+            logger.warn('Only moderators can change immersive view template');
+            return;
+        }
+
+        console.log('✅ [JitsiConference] Moderator setting immersive view template:', templateId);
+        this.setLocalParticipantProperty('immersive_view_template', templateId);
+    }
+
+    /**
+     * Sets immersive view slot count for the local participant.
+     * Only moderators can change immersive view slot count.
+     * @param {number} slotCount - The number of slots.
+     * @returns {void}
+     */
+    public setImmersiveViewSlotCount(slotCount: number): void {
+        console.log('📊 [JitsiConference] setImmersiveViewSlotCount called:', slotCount);
+        
+        // Check if local participant is moderator
+        if (!this.isModerator()) {
+            console.log('❌ [JitsiConference] Only moderators can change immersive view slot count');
+            logger.warn('Only moderators can change immersive view slot count');
+            return;
+        }
+
+        console.log('✅ [JitsiConference] Moderator setting immersive view slot count:', slotCount);
+        this.setLocalParticipantProperty('immersive_view_slot_count', slotCount.toString());
+    }
+
+    /**
+     * Sends immersive view assignments to other participants.
+     * Only moderators can send immersive view assignments.
+     * @param {Object} assignments - The slot assignments.
+     * @returns {void}
+     */
+    public sendImmersiveViewAssignments(assignments: { [slotIndex: number]: string }): void {
+        console.log('👥 [JitsiConference] sendImmersiveViewAssignments called:', assignments);
+        
+        // Check if local participant is moderator
+        if (!this.isModerator()) {
+            console.log('❌ [JitsiConference] Only moderators can send immersive view assignments');
+            logger.warn('Only moderators can send immersive view assignments');
+            return;
+        }
+
+        console.log('✅ [JitsiConference] Moderator sending immersive view assignments:', assignments);
+        this.sendEndpointMessage('', {
+            name: 'immersive-view-assignments',
+            assignments,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Gets immersive view enabled state from a participant.
+     * @param {string} participantId - The participant ID.
+     * @returns {boolean|undefined} The immersive view enabled state.
+     */
+    public getParticipantImmersiveViewEnabled(participantId: string): Optional<boolean> {
+        const participant = this.getParticipantById(participantId);
+        if (participant) {
+            const property = participant.getProperty('immersive_view_enabled');
+            return property ? property === 'true' : undefined;
+        }
+        return undefined;
+    }
+
+    /**
+     * Gets immersive view template from a participant.
+     * @param {string} participantId - The participant ID.
+     * @returns {string|undefined} The immersive view template.
+     */
+    public getParticipantImmersiveViewTemplate(participantId: string): Optional<string> {
+        const participant = this.getParticipantById(participantId);
+        if (participant) {
+            return participant.getProperty('immersive_view_template');
+        }
+        return undefined;
+    }
+
+    /**
+     * Gets immersive view slot count from a participant.
+     * @param {string} participantId - The participant ID.
+     * @returns {number|undefined} The immersive view slot count.
+     */
+    public getParticipantImmersiveViewSlotCount(participantId: string): Optional<number> {
+        const participant = this.getParticipantById(participantId);
+        if (participant) {
+            const property = participant.getProperty('immersive_view_slot_count');
+            return property ? parseInt(property, 10) : undefined;
+        }
+        return undefined;
+    }
 }

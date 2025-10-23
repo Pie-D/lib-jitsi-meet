@@ -514,5 +514,33 @@ export enum JitsiConferenceEvents {
      * An event(library-private) fired when a new media session is added to the conference.
      * @private
      */
-    _MEDIA_SESSION_STARTED = 'conference.media_session.started'
+    _MEDIA_SESSION_STARTED = 'conference.media_session.started',
+
+    /**
+     * Indicates that immersive view has been enabled by a participant.
+     * @param {string} participantId - The ID of the participant who enabled immersive view.
+     * @param {boolean} enabled - Whether immersive view is enabled.
+     */
+    IMMERSIVE_VIEW_ENABLED = 'conference.immersive_view_enabled',
+
+    /**
+     * Indicates that immersive view template has been changed by a participant.
+     * @param {string} participantId - The ID of the participant who changed the template.
+     * @param {string} templateId - The new template ID.
+     */
+    IMMERSIVE_VIEW_TEMPLATE_CHANGED = 'conference.immersive_view_template_changed',
+
+    /**
+     * Indicates that immersive view slot count has been changed by a participant.
+     * @param {string} participantId - The ID of the participant who changed the slot count.
+     * @param {number} slotCount - The new slot count.
+     */
+    IMMERSIVE_VIEW_SLOT_COUNT_CHANGED = 'conference.immersive_view_slot_count_changed',
+
+    /**
+     * Indicates that immersive view assignments have been changed by a participant.
+     * @param {string} participantId - The ID of the participant who changed the assignments.
+     * @param {Object} assignments - The new slot assignments.
+     */
+    IMMERSIVE_VIEW_ASSIGNMENTS_CHANGED = 'conference.immersive_view_assignments_changed'
 }
