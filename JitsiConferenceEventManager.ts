@@ -326,22 +326,14 @@ export default class JitsiConferenceEventManager {
 
             // Handle immersive view properties
             if (prop === 'immersive_view_enabled') {
-                console.log('🎯 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_ENABLED:', participant.getId(), value === 'true');
-                console.log('🎯 [JitsiConferenceEventManager] Participant details:', {
-                    id: participant.getId(),
-                    role: participant.getRole(),
-                    name: participant.getDisplayName()
-                });
                 conference.eventEmitter.emit(
                     JitsiConferenceEvents.IMMERSIVE_VIEW_ENABLED,
                     participant.getId(), value === 'true');
             } else if (prop === 'immersive_view_template') {
-                console.log('🎨 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_TEMPLATE_CHANGED:', participant.getId(), value);
                 conference.eventEmitter.emit(
                     JitsiConferenceEvents.IMMERSIVE_VIEW_TEMPLATE_CHANGED,
                     participant.getId(), value);
             } else if (prop === 'immersive_view_slot_count') {
-                console.log('📊 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_SLOT_COUNT_CHANGED:', participant.getId(), parseInt(value, 10));
                 conference.eventEmitter.emit(
                     JitsiConferenceEvents.IMMERSIVE_VIEW_SLOT_COUNT_CHANGED,
                     participant.getId(), parseInt(value, 10));
@@ -458,16 +450,21 @@ export default class JitsiConferenceEventManager {
 
         chatRoom.addListener(XMPPEvents.JSON_MESSAGE_RECEIVED,
             (from: string, payload: any) => {
+                console.log('📨 [JitsiConferenceEventManager] Received JSON message:', { from, payload });
                 const id = Strophe.getResourceFromJid(from);
                 const participant = conference.getParticipantById(id);
 
                 if (participant) {
+                    console.log('👤 [JitsiConferenceEventManager] Participant found:', participant.getId(), participant.getRole());
                     // Handle immersive view assignments
                     if (payload.name === 'immersive-view-assignments') {
-                        console.log('👥 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_ASSIGNMENTS_CHANGED:', participant.getId(), payload.assignments);
+                        console.log('🎯 [JitsiConferenceEventManager] Received assignments payload:', payload);
+                        console.log('🎯 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_ASSIGNMENTS_CHANGED:', participant.getId(), payload.assignments);
                         conference.eventEmitter.emit(
                             JitsiConferenceEvents.IMMERSIVE_VIEW_ASSIGNMENTS_CHANGED,
                             participant.getId(), payload.assignments);
+                    } else {
+                        console.log('📝 [JitsiConferenceEventManager] Other JSON message:', payload.name);
                     }
 
                     conference.eventEmitter.emit(

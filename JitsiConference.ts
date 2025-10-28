@@ -4680,19 +4680,13 @@ export default class JitsiConference extends Listenable {
      * @returns {void}
      */
     public setImmersiveViewEnabled(enabled: boolean): void {
-        console.log('🎯 [JitsiConference] setImmersiveViewEnabled called:', enabled);
-        
         // Check if local participant is moderator
         if (!this.isModerator()) {
-            console.log('❌ [JitsiConference] Only moderators can enable/disable immersive view');
             logger.warn('Only moderators can enable/disable immersive view');
             return;
         }
 
-        console.log('✅ [JitsiConference] Moderator setting immersive view enabled:', enabled);
-        console.log('🔧 [JitsiConference] Calling setLocalParticipantProperty with:', 'immersive_view_enabled', enabled.toString());
         this.setLocalParticipantProperty('immersive_view_enabled', enabled.toString());
-        console.log('✅ [JitsiConference] setLocalParticipantProperty completed');
     }
 
     /**
@@ -4742,21 +4736,19 @@ export default class JitsiConference extends Listenable {
      * @returns {void}
      */
     public sendImmersiveViewAssignments(assignments: { [slotIndex: number]: string }): void {
-        console.log('👥 [JitsiConference] sendImmersiveViewAssignments called:', assignments);
-        
         // Check if local participant is moderator
         if (!this.isModerator()) {
-            console.log('❌ [JitsiConference] Only moderators can send immersive view assignments');
             logger.warn('Only moderators can send immersive view assignments');
             return;
         }
 
-        console.log('✅ [JitsiConference] Moderator sending immersive view assignments:', assignments);
+        console.log('🎯 [JitsiConference] Sending assignments:', assignments);
         this.sendEndpointMessage('', {
             name: 'immersive-view-assignments',
             assignments,
             timestamp: Date.now()
         });
+        console.log('✅ [JitsiConference] Assignments sent successfully');
     }
 
     /**
