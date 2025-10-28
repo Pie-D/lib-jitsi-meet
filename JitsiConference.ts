@@ -4735,20 +4735,22 @@ export default class JitsiConference extends Listenable {
      * @param {Object} assignments - The slot assignments.
      * @returns {void}
      */
-    public sendImmersiveViewAssignments(assignments: { [slotIndex: number]: string }): void {
+    public sendImmersiveViewAssignments(assignments: { [slotIndex: number]: string }, templateId?: string, slotCount?: number): void {
         // Check if local participant is moderator
         if (!this.isModerator()) {
             logger.warn('Only moderators can send immersive view assignments');
             return;
         }
 
-        console.log('🎯 [JitsiConference] Sending assignments:', assignments);
-        this.sendEndpointMessage('', {
+        // console.log('🔥 IMMERSIVE_SYNC: Moderator sending assignments via XMPP');
+        this.sendMessage({
             name: 'immersive-view-assignments',
             assignments,
+            templateId,  // User sẽ dùng để tính toán vị trí
+            slotCount,   // User sẽ dùng để tính toán vị trí
             timestamp: Date.now()
         });
-        console.log('✅ [JitsiConference] Assignments sent successfully');
+        // console.log('🔥 IMMERSIVE_SYNC: XMPP message sent successfully');
     }
 
     /**

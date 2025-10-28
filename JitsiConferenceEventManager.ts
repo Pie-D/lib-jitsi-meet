@@ -450,21 +450,17 @@ export default class JitsiConferenceEventManager {
 
         chatRoom.addListener(XMPPEvents.JSON_MESSAGE_RECEIVED,
             (from: string, payload: any) => {
-                console.log('📨 [JitsiConferenceEventManager] Received JSON message:', { from, payload });
+                // console.log('🔥 IMMERSIVE_SYNC: *** ANY JSON MESSAGE RECEIVED ***:', { from, payload });
                 const id = Strophe.getResourceFromJid(from);
                 const participant = conference.getParticipantById(id);
 
                 if (participant) {
-                    console.log('👤 [JitsiConferenceEventManager] Participant found:', participant.getId(), participant.getRole());
                     // Handle immersive view assignments
                     if (payload.name === 'immersive-view-assignments') {
-                        console.log('🎯 [JitsiConferenceEventManager] Received assignments payload:', payload);
-                        console.log('🎯 [JitsiConferenceEventManager] Emitting IMMERSIVE_VIEW_ASSIGNMENTS_CHANGED:', participant.getId(), payload.assignments);
+                        // console.log('🔥 IMMERSIVE_SYNC: XMPP message received from', participant.getId());
                         conference.eventEmitter.emit(
                             JitsiConferenceEvents.IMMERSIVE_VIEW_ASSIGNMENTS_CHANGED,
-                            participant.getId(), payload.assignments);
-                    } else {
-                        console.log('📝 [JitsiConferenceEventManager] Other JSON message:', payload.name);
+                            participant.getId(), payload);  // Gửi toàn bộ payload thay vì chỉ assignments
                     }
 
                     conference.eventEmitter.emit(
