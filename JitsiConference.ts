@@ -4741,6 +4741,12 @@ export default class JitsiConference extends Listenable {
             logger.warn('Only moderators can send immersive view assignments');
             return;
         }
+        // Persist to presence so late joiners receive it immediately.
+        try {
+            this.setLocalParticipantProperty('immersive_view_assignments', JSON.stringify(assignments));
+        } catch (e) {
+            // no-op
+        }
 
         // console.log('🔥 IMMERSIVE_SYNC: Moderator sending assignments via XMPP');
         this.sendMessage({
