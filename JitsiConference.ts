@@ -4811,4 +4811,28 @@ export default class JitsiConference extends Listenable {
         }
         return undefined;
     }
+
+    /**
+     * Gets immersive view assignments from a participant.
+     * Used by late joiners to read the latest snapshot from moderator presence.
+     * @param {string} participantId - The participant ID.
+     * @returns {Object|undefined} The assignments map if present.
+     */
+    public getParticipantImmersiveViewAssignments(participantId: string): Optional<{ [slotIndex: number]: string; }> {
+        const participant = this.getParticipantById(participantId);
+        if (participant) {
+            const raw = participant.getProperty('immersive_view_assignments');
+            if (typeof raw === 'string' && raw.length) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object') {
+                        return parsed;
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+        }
+        return undefined;
+    }
 }
