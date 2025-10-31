@@ -4708,16 +4708,16 @@ export default class JitsiConference extends Listenable {
      * @returns {void}
      */
     public setImmersiveViewTemplate(templateId: string): void {
-        console.log('🎨 [JitsiConference] setImmersiveViewTemplate called:', templateId);
+        // console.log('🎨 [JitsiConference] setImmersiveViewTemplate called:', templateId);
         
         // Check if local participant is moderator
         if (!this.isModerator()) {
-            console.log('❌ [JitsiConference] Only moderators can change immersive view template');
+            // console.log('❌ [JitsiConference] Only moderators can change immersive view template');
             logger.warn('Only moderators can change immersive view template');
             return;
         }
 
-        console.log('✅ [JitsiConference] Moderator setting immersive view template:', templateId);
+        // console.log('✅ [JitsiConference] Moderator setting immersive view template:', templateId);
         this.setLocalParticipantProperty('immersive_view_template', templateId);
     }
 
@@ -4728,16 +4728,16 @@ export default class JitsiConference extends Listenable {
      * @returns {void}
      */
     public setImmersiveViewSlotCount(slotCount: number): void {
-        console.log('📊 [JitsiConference] setImmersiveViewSlotCount called:', slotCount);
+        // console.log('📊 [JitsiConference] setImmersiveViewSlotCount called:', slotCount);
         
         // Check if local participant is moderator
         if (!this.isModerator()) {
-            console.log('❌ [JitsiConference] Only moderators can change immersive view slot count');
+            // console.log('❌ [JitsiConference] Only moderators can change immersive view slot count');
             logger.warn('Only moderators can change immersive view slot count');
             return;
         }
 
-        console.log('✅ [JitsiConference] Moderator setting immersive view slot count:', slotCount);
+        // console.log('✅ [JitsiConference] Moderator setting immersive view slot count:', slotCount);
         this.setLocalParticipantProperty('immersive_view_slot_count', slotCount.toString());
     }
 

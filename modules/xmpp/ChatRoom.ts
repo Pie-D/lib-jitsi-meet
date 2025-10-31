@@ -581,9 +581,9 @@ export default class ChatRoom extends Listenable {
 
             const meetingIdValEl = findFirst(result, ':scope>query>x[type="result"]>field[var="muc#roominfo_meetingId"]>value');
             const roomOwnerValEl = findFirst(result, ':scope>query>x[type="result"]>field[var="muc#roominfo_roomOwner"]>value');
-            console.log('tqd roomOwnerValEl', result.outerHTML);
-            console.log('tqd roomOwnerValEl', result);
-            console.log('tqd roomOwnerValEl', roomOwnerValEl);
+            // console.log('tqd roomOwnerValEl', result.outerHTML);
+            // console.log('tqd roomOwnerValEl', result);
+            // console.log('tqd roomOwnerValEl', roomOwnerValEl);
             if (roomOwnerValEl) {
                 this.setRoomOwner(getText(roomOwnerValEl));
             } else {
