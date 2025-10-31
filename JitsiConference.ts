@@ -3833,6 +3833,18 @@ export default class JitsiConference extends Listenable {
 
         return null;
     }
+    
+    /**
+     * Returns the PIN for joining the conference via phone.
+     * @returns {string|null} The phone PIN or null if not available.
+     */
+    public getRoomOwner(): Nullable<string> {
+        if (this.room) {
+            return this.room.getRoomOwner();
+        }
+        return null;
+    }
+
 
     /**
      * Returns the meeting unique ID if any.

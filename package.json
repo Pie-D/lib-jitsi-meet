@@ -61,6 +61,7 @@
     "webpack-cli": "4.9.0"
   },
   "scripts": {
+    "build-dev": "npm run build && npm run gen-types && npm pack && mv lib-jitsi-meet-0.0.0.tgz lib-jitsi-meet.tgz",
     "build": "npm run gen-version && npm run build:webpack && npm run build:tsc",
     "build:webpack": "webpack",
     "build:webpack-dev": "npm run gen-version && webpack --mode development",

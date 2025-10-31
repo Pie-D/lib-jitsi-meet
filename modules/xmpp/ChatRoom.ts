@@ -245,6 +245,7 @@ export default class ChatRoom extends Listenable {
     private presenceUpdateTime: number;
     private presenceSyncTime?: number;
     private meetingId?: string;
+    private roomOwner?: Nullable<string>;
     private focusFeatures?: Set<string>;
     private subject?: string;
     private _roomCreationRetries?: number;
@@ -579,7 +580,15 @@ export default class ChatRoom extends Listenable {
             }
 
             const meetingIdValEl = findFirst(result, ':scope>query>x[type="result"]>field[var="muc#roominfo_meetingId"]>value');
-
+            const roomOwnerValEl = findFirst(result, ':scope>query>x[type="result"]>field[var="muc#roominfo_roomOwner"]>value');
+            console.log('tqd roomOwnerValEl', result.outerHTML);
+            console.log('tqd roomOwnerValEl', result);
+            console.log('tqd roomOwnerValEl', roomOwnerValEl);
+            if (roomOwnerValEl) {
+                this.setRoomOwner(getText(roomOwnerValEl));
+            } else {
+                logger.warn('No room owner from backend');
+            }
             if (meetingIdValEl) {
                 this.setMeetingId(getText(meetingIdValEl));
             } else {
@@ -661,6 +670,21 @@ export default class ChatRoom extends Listenable {
         }
     }
 
+        /**
+     * Sets the room owner (received from the backend).
+     *
+     * @param {string} roomOwner - The room owner .
+     * @returns {void}
+     */
+        public setRoomOwner(roomOwner: string): void {
+            if (this.roomOwner !== roomOwner) {
+                if (this.roomOwner) {
+                    logger.warn(`Room Owner changed from:${this.roomOwner} to:${roomOwner}`);
+                }
+                this.roomOwner = roomOwner;
+                this.eventEmitter.emit(XMPPEvents.ROOM_OWNER_SET, roomOwner);
+            }
+        }
     /**
      *
      */
@@ -2150,7 +2174,9 @@ export default class ChatRoom extends Listenable {
     public getMeetingId(): Optional<string> {
         return this.meetingId;
     }
-
+    public getRoomOwner(): Nullable<string> {
+        return this.roomOwner;
+    }
     /**
      * Mutes remote participant.
      * @param jid of the participant

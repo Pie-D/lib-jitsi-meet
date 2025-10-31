@@ -124,7 +124,10 @@ export enum JitsiConferenceEvents {
      * Indicates that the conference unique identifier has been set.
      */
     CONFERENCE_UNIQUE_ID_SET = 'conference.unique_id_set',
-
+    /**
+     * Indicates that the conference room owner identifier has been set.
+     */
+    CONFERENCE_ROOM_OWNER_SET = 'conference.room_owner_set',
     /**
      * Indicates that the aggregate set of codecs supported by the visitors has changed.
      */
