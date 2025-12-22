@@ -920,7 +920,7 @@ export default class ChatRoom extends Listenable {
         } else if (this.members[from] === undefined) {
             // new participant
             this.members[from] = member;
-            logger.info('entered', from, member);
+            logger.info('entered', from);
             hasStatusUpdate = member.status !== undefined;
             hasVersionUpdate = member.version !== undefined;
             if (member.isFocus) {
@@ -1298,6 +1298,8 @@ export default class ChatRoom extends Listenable {
             if (reasonSelect) {
                 reason = getText(reasonSelect);
             }
+
+            logger.info(`Kicked by ${from}`);
 
             // we first fire the kicked so we can show the participant
             // who kicked, before notifying that participant left
