@@ -190,21 +190,24 @@ const MEMBERS_AFFILIATIONS = [ 'owner', 'admin', 'member' ];
 function extractIdentityInformation(node: IPresenceNode, hiddenFromRecorderFeatureEnabled: boolean): IIdentity {
     const identity: IIdentity = {};
     const userInfo = node.children.find(c => c.tagName === 'user');
+    const HIDDEN_FROM_RECORDER = 'hidden-from-recorder';
 
     if (userInfo) {
         identity.user = {};
-        const tags = [ 'id', 'name', 'avatar' ];
 
-        if (hiddenFromRecorderFeatureEnabled) {
-            tags.push('hidden-from-recorder');
+        // Add all children from the user node except hidden-from-recorder
+        for (const child of userInfo.children) {
+            if (child.tagName && child.value !== undefined && child.tagName !== HIDDEN_FROM_RECORDER) {
+                identity.user[child.tagName] = child.value;
+            }
         }
 
-        for (const tag of tags) {
-            const child
-                = userInfo.children.find(c => c.tagName === tag);
+        // Separately check if we should add hidden-from-recorder
+        if (hiddenFromRecorderFeatureEnabled) {
+            const hiddenFromRecorder = userInfo.children.find(c => c.tagName === HIDDEN_FROM_RECORDER);
 
-            if (child) {
-                identity.user[tag] = child.value;
+            if (hiddenFromRecorder) {
+                identity.user[HIDDEN_FROM_RECORDER] = hiddenFromRecorder.value;
             }
         }
     }
@@ -433,7 +436,10 @@ export default class ChatRoom extends Listenable {
      * @private
      */
     private _parseReplyMessage(msg: Element): string | null {
-        return getAttribute(findFirst(msg, ':scope>reply'), 'to');
+        return getAttribute(
+            findFirst(msg, ':scope>reply[*|xmlns="urn:xmpp:reply:0"]'),
+            'to'
+        );
     }
 
     /**
@@ -1442,10 +1448,11 @@ export default class ChatRoom extends Listenable {
 
             if (stamp) {
                 // the format is CCYYMMDDThh:mm:ss
-                const dateParts
-                    = stamp.match(/(\d{4})(\d{2})(\d{2}T\d{2}:\d{2}:\d{2})/);
+                const dateParts = stamp.match(/(\d{4})(\d{2})(\d{2}T\d{2}:\d{2}:\d{2})/);
 
-                stamp = `${dateParts[1]}-${dateParts[2]}-${dateParts[3]}Z`;
+                if (dateParts?.length === 4) {
+                    stamp = `${dateParts[1]}-${dateParts[2]}-${dateParts[3]}Z`;
+                }
             }
         }
 

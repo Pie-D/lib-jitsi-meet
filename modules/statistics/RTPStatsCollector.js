@@ -99,6 +99,14 @@ class SsrcStats {
     setEncodeStats(encodeStats) {
         this.encodeStats = encodeStats || {};
     }
+
+    /**
+     * Sets the framesDecoded counter for inbound video streams.
+     * @param {number} framesDecoded the value to set.
+     */
+    setFramesDecoded(framesDecoded) {
+        this.framesDecoded = typeof framesDecoded === 'number' ? framesDecoded : undefined;
+    }
 }
 
 /**
@@ -173,6 +181,14 @@ export default class StatsCollector {
          * @type {Map<number,SsrcStats}
          */
         this.ssrc2stats = new Map();
+
+        /**
+         * Tracks whether the previous stats cycle had any inbound video SSRCs in the bad state
+         * (bytes received, no frames decoded). Used to emit a final all-clear call to QualityController
+         * when the set transitions from non-empty to empty.
+         * @type {boolean}
+         */
+        this._hadBadInboundSsrcs = false;
     }
 
     /**
@@ -282,6 +298,12 @@ export default class StatsCollector {
         let videoBitrateDownload = 0;
         let videoBitrateUpload = 0;
 
+        // Collects per-SSRC inbound video stats for remote decoding detection in QualityController.
+        const inboundVideoStats = new Map();
+
+        // Collects per-SSRC framesDecoded counters for freeze detection in TrackStreamingStatus.
+        const framesDecodedMap = new Map();
+
         for (const [ ssrc, ssrcStats ] of this.ssrc2stats) {
             // process packet loss stats
             const loss = ssrcStats.loss;
@@ -304,6 +326,28 @@ export default class StatsCollector {
 
             if (!track) {
                 continue; // eslint-disable-line no-continue
+            }
+
+            // Collect inbound video stats only for streams where bytes are being received but no frames are decoded.
+            // Filtering here avoids sending stats for healthy streams to QualityController on every cycle.
+            if (loss.isDownloadStream && !track.isLocal() && !track.isAudioTrack()
+                    && ssrcBitrateDownload > 0 && ssrcStats.framerate === 0) {
+                const participantId = track.getParticipantId();
+
+                if (participantId) {
+                    inboundVideoStats.set(ssrc, {
+                        bitrateDownload: ssrcBitrateDownload,
+                        fps: ssrcStats.framerate,
+                        participantId
+                    });
+                }
+            }
+
+            // Collect framesDecoded for all remote inbound video streams (used by TrackStreamingStatus for
+            // freeze detection on browsers where mute/unmute events are unreliable).
+            if (loss.isDownloadStream && !track.isLocal() && track.isVideoTrack()
+                    && typeof ssrcStats.framesDecoded === 'number') {
+                framesDecodedMap.set(ssrc, ssrcStats.framesDecoded);
             }
 
             let audioCodec;
@@ -413,11 +457,19 @@ export default class StatsCollector {
                 bitrate: this.conferenceStats.bitrate,
                 codec: codecs,
                 framerate: framerates,
+                framesDecoded: framesDecodedMap,
                 packetLoss: this.conferenceStats.packetLoss,
                 resolution: resolutions,
                 transport: this.conferenceStats.transport
             });
         this.conferenceStats.transport = [];
+
+        // Emit when there are currently bad SSRCs, or when the previous cycle had bad SSRCs and this one has
+        // none (all-clear), so QualityController can fire resolution events and clean up its tracker.
+        if (inboundVideoStats.size || this._hadBadInboundSsrcs) {
+            this.eventEmitter.emit(StatisticsEvents.INBOUND_VIDEO_STATS, this.peerconnection, inboundVideoStats);
+        }
+        this._hadBadInboundSsrcs = inboundVideoStats.size > 0;
     }
 
     /**
@@ -626,7 +678,13 @@ export default class StatsCollector {
                         'download': this._calculateBitrate(now, before, 'bytesReceived'),
                         'upload': 0
                     });
-                } else if (before) {
+                }
+
+                if (now.type === 'inbound-rtp' && typeof now.framesDecoded === 'number') {
+                    ssrcStats.setFramesDecoded(now.framesDecoded);
+                }
+
+                if (now.type !== 'inbound-rtp' && before) {
                     byteSentStats[ssrc] = this.getNonNegativeValue(now.bytesSent);
                     ssrcStats.addBitrate({
                         'download': 0,

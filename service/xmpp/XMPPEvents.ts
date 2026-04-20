@@ -27,7 +27,7 @@ export enum XMPPEvents {
     AV_MODERATION_PARTICIPANT_APPROVED = 'xmpp.av_moderation.participant.approved',
 
     /**
-     * Event fired when we receive message that a new jid was approved.
+     * Event fired when we receive message that a new jid was rejected.
      */
     AV_MODERATION_PARTICIPANT_REJECTED = 'xmpp.av_moderation.participant.rejected',
 
@@ -249,6 +249,10 @@ export enum XMPPEvents {
 
     // Designates an event indicating that the MUC visitors support has changed.
     MUC_VISITORS_SUPPORTED_CHANGED = 'xmpp.muc_visitors_supported_changed',
+
+    // Designates an event indicating that the browser regenerated new SSRCs for an existing source on a P2P
+    // connection. The P2P session should be terminated so the call falls back to JVB.
+    P2P_TERMINATION_REQUIRED = 'xmpp.p2p.termination_required',
 
     // Designates an event indicating that a participant in the XMPP MUC has
     // advertised that they have audio muted (or unmuted).
