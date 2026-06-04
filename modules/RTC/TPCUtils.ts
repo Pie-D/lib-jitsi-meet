@@ -18,7 +18,7 @@ import browser from '../browser';
 import SDPUtil from '../sdp/SDPUtil';
 
 import JitsiLocalTrack from './JitsiLocalTrack';
-import TraceablePeerConnection, { IAudioQuality, IRTCRtpEncodingParameters, IVideoQuality } from './TraceablePeerConnection';
+import TraceablePeerConnection, { IAppliedAudioQuality, IAudioQuality, IRTCRtpEncodingParameters, IVideoQuality } from './TraceablePeerConnection';
 
 const logger = getLogger('rtc:TPCUtils');
 const VIDEO_CODECS = [ CodecMimeType.AV1, CodecMimeType.H264, CodecMimeType.VP8, CodecMimeType.VP9 ];
@@ -334,6 +334,31 @@ export class TPCUtils {
     }
 
     /**
+     * Removes the sdes:mid RTP header extension from the remote SDP for Firefox. Opting into sdes:mid negotiation
+     * was enabled on Chrome to fix SSRC demuxing issues (https://issues.webrtc.org/issues/502130956), but Firefox
+     * does not handle the sdes:mid header extension well, causing audio/video SSRC demuxing failures.
+     *
+     * @param {SessionDescription} parsedSdp - The parsed SDP that needs to be munged.
+     * @returns {SessionDescription} The munged SDP.
+     * @internal
+     */
+    _stripSdesMid(parsedSdp: SessionDescription): SessionDescription {
+        if (!browser.isFirefox()) {
+            return parsedSdp;
+        }
+
+        const mungedSdp = parsedSdp;
+
+        for (const mLine of mungedSdp.media) {
+            if (mLine.ext) {
+                mLine.ext = mLine.ext.filter(ext => ext.uri !== 'urn:ietf:params:rtp-hdrext:sdes:mid');
+            }
+        }
+
+        return mungedSdp;
+    }
+
+    /**
      * Returns the calculated active state of the stream encodings based on the frame height requested for the send
      * stream. All the encodings that have a resolution lower than the frame height requested will be enabled.
      *
@@ -636,29 +661,30 @@ export class TPCUtils {
      */
     injectSsrcGroupForSimulcast(desc: RTCSessionDescription): RTCSessionDescription {
         const sdp = transform.parse(desc.sdp);
-        const video = sdp.media.find(mline => mline.type === 'video');
+        const videoMlines = sdp.media.filter(mline => mline.type === 'video');
+        let modified = false;
 
-        // Check if the browser supports RTX, add only the primary ssrcs to the SIM group if that is the case.
-        video.ssrcGroups = video.ssrcGroups || [];
-        const fidGroups = video.ssrcGroups.filter(group => group.semantics === SSRC_GROUP_SEMANTICS.FID);
-
-        if (video.simulcast || video.simulcast_03) {
+        for (const video of videoMlines) {
+            if (!(video.simulcast || video.simulcast_03)) {
+                continue;
+            }
+            video.ssrcGroups = video.ssrcGroups || [];
+            if (video.ssrcGroups.find(group => group.semantics === SSRC_GROUP_SEMANTICS.SIM)) {
+                continue;
+            }
+            const fidGroups = video.ssrcGroups.filter(group => group.semantics === SSRC_GROUP_SEMANTICS.FID);
             const ssrcs = [];
 
             if (fidGroups?.length) {
                 fidGroups.forEach(group => {
                     ssrcs.push(group.ssrcs.split(' ')[0]);
                 });
-            } else {
+            } else if (video.ssrcs) {
                 video.ssrcs.forEach(ssrc => {
                     if (ssrc.attribute === 'msid') {
                         ssrcs.push(ssrc.id);
                     }
                 });
-            }
-            if (video.ssrcGroups.find(group => group.semantics === SSRC_GROUP_SEMANTICS.SIM)) {
-                // Group already exists, no need to do anything
-                return desc;
             }
 
             // Add a SIM group for every 3 FID groups.
@@ -669,7 +695,12 @@ export class TPCUtils {
                     semantics: SSRC_GROUP_SEMANTICS.SIM,
                     ssrcs: simSsrcs.join(' ')
                 });
+                modified = true;
             }
+        }
+
+        if (!modified) {
+            return desc;
         }
 
         return new RTCSessionDescription({
@@ -715,8 +746,13 @@ export class TPCUtils {
         const senderMids = Array.from(this.pc.localTrackTransceiverMids.values());
 
         mLines.forEach((mLine, idx) => {
-            // Make sure the simulcast recv line is only set on video descriptions that are associated with senders.
-            if (senderMids.find(sender => mLine.mid.toString() === sender.toString()) || idx === 0) {
+            // FF 110+: recvonly slots reserved for local senders that haven't been registered yet
+            // (e.g., secondary sources before replaceTrack runs) also need simulcast info.
+            const isSenderMline = Boolean(senderMids.find(sender => mLine.mid.toString() === sender.toString()))
+                || idx === 0
+                || (browser.supportsEncodingsConfig() && mLine.direction === MediaDirection.RECVONLY);
+
+            if (isSenderMline) {
                 if (!mLine.simulcast_03 || !mLine.simulcast) {
                     mLine.rids = rids;
 
@@ -828,13 +864,15 @@ export class TPCUtils {
      * if present.
      *
      * @param {SessionDescription} parsedSdp that needs to be munged.
+     * @param {IAppliedAudioQuality} audioQuality - The audio quality settings applied on the peer connection.
      * @returns {SessionDescription} the munged SDP.
      * @internal
      */
-    mungeOpus(parsedSdp: SessionDescription): SessionDescription {
-        const { audioQuality } = this.options;
-
-        if (!audioQuality?.enableOpusDtx && !audioQuality?.stereo && !audioQuality?.opusMaxAverageBitrate) {
+    mungeOpus(parsedSdp: SessionDescription, audioQuality?: IAppliedAudioQuality): SessionDescription {
+        if (!audioQuality
+            || (typeof audioQuality.enableOpusDtx !== 'boolean'
+                && typeof audioQuality.stereo !== 'boolean'
+                && typeof audioQuality.opusMaxAverageBitrate !== 'number')) {
             return parsedSdp;
         }
 
@@ -861,12 +899,13 @@ export class TPCUtils {
             const fmtpConfig = transform.parseParams(fmtpOpus.config);
             let sdpChanged = false;
 
-            if (audioQuality?.stereo) {
-                fmtpConfig.stereo = 1;
+            if (typeof audioQuality?.stereo === 'boolean') {
+                fmtpConfig.stereo = audioQuality.stereo ? 1 : 0;
+                fmtpConfig['sprop-stereo'] = audioQuality.stereo ? 1 : 0;
                 sdpChanged = true;
             }
 
-            if (audioQuality?.opusMaxAverageBitrate) {
+            if (typeof audioQuality?.opusMaxAverageBitrate === 'number') {
                 fmtpConfig.maxaveragebitrate = audioQuality.opusMaxAverageBitrate;
                 sdpChanged = true;
             }

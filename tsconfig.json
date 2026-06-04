@@ -7,12 +7,12 @@
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
-    "moduleResolution": "node",
     "paths": {
       "@jitsi/js-utils/*": [
         "./node_modules/@jitsi/js-utils/dist/*"
       ]
     },
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "lib": [
       "DOM",

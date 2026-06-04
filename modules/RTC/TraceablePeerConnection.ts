@@ -97,6 +97,14 @@ export interface ITPCOptions {
 export interface IAudioQuality {
     enableOpusDtx?: boolean;
     opusMaxAverageBitrate?: number;
+    opusMaxAverageBitrateMono?: number;
+    opusMaxAverageBitrateStereo?: number;
+    stereo?: boolean;
+}
+
+export interface IAppliedAudioQuality {
+    enableOpusDtx?: boolean;
+    opusMaxAverageBitrate?: number;
     stereo?: boolean;
 }
 
@@ -162,16 +170,16 @@ export default class TraceablePeerConnection {
      */
     _capScreenshareBitrate: boolean;
     /**
+     * Mids of transceivers that have ever carried a local sender track. Never cleared on mute/remove
+     * so LocalSdpMunger can preserve the SSRCs of previously-active sender slots.
      * @internal
      */
-    _hasHadAudioTrack: boolean;
-    /**
-     * @internal
-     */
-    _hasHadVideoTrack: boolean;
+    _midsWithSentTrack: Set<string>;
 
     // public property declarations
     audioTransferActive: boolean;
+    audioQualityLocal: Optional<IAppliedAudioQuality>;
+    audioQualityRemote: Optional<IAppliedAudioQuality>;
     videoTransferActive: boolean;
     id: number;
     isP2P: boolean;
@@ -394,6 +402,34 @@ export default class TraceablePeerConnection {
         this._signalingLayer.on(SignalingEvents.PEER_MUTED_CHANGED, this._peerMutedChanged);
         this.options = options;
 
+        // Initialize audio quality from config
+        if (this.options?.audioQuality) {
+            const audioQualityConfig = this.options.audioQuality;
+            const stereo = typeof audioQualityConfig.stereo === 'boolean'
+                ? audioQualityConfig.stereo
+                : undefined;
+
+            // Determine maxaveragebitrate:
+            // - Prefer the explicit stereo/mono fields.
+            // - Fall back to the legacy opusMaxAverageBitrate if the new fields are unset.
+            const opusMaxAverageBitrate = stereo
+                ? (audioQualityConfig.opusMaxAverageBitrateStereo
+                    ?? audioQualityConfig.opusMaxAverageBitrateMono
+                    ?? audioQualityConfig.opusMaxAverageBitrate)
+                : (audioQualityConfig.opusMaxAverageBitrateMono
+                    ?? audioQualityConfig.opusMaxAverageBitrateStereo
+                    ?? audioQualityConfig.opusMaxAverageBitrate);
+
+            const audioQuality = {
+                enableOpusDtx: audioQualityConfig.enableOpusDtx,
+                opusMaxAverageBitrate,
+                stereo
+            };
+
+            this.audioQualityLocal = audioQuality;
+            this.audioQualityRemote = audioQuality;
+        }
+
         // Setup SignalingLayer listeners for source-name based events.
         this._signalingLayer.on(SignalingEvents.SOURCE_MUTED_CHANGED,
             (sourceName, isMuted) => this._sourceMutedChanged(sourceName, isMuted));
@@ -450,15 +486,7 @@ export default class TraceablePeerConnection {
          */
         this._usesCodecSelectionAPI = this.options.usesCodecSelectionAPI;
 
-        /**
-         * Indicates whether an audio track has ever been added to the peer connection.
-         */
-        this._hasHadAudioTrack = false;
-
-        /**
-         * Indicates whether a video track has ever been added to the peer connection.
-         */
-        this._hasHadVideoTrack = false;
+        this._midsWithSentTrack = new Set<string>();
 
         /**
          * @type {number} The max number of stats to keep in this.stats. Limit to
@@ -680,7 +708,36 @@ export default class TraceablePeerConnection {
             return;
         }
 
-        parameters.encodings = this.tpcUtils.getStreamEncodings(localTrack) as RTCRtpEncodingParameters[];
+        const desiredEncodings = this.tpcUtils.getStreamEncodings(localTrack);
+
+        if (browser.supportsEncodingsConfig()) {
+            // FF 110+ rejects encodings length/rid changes; skip on mismatch to keep the call alive.
+            if (parameters.encodings.length !== desiredEncodings.length) {
+                return;
+            }
+            parameters.encodings.forEach((encoding: IRTCRtpEncodingParameters, idx: number) => {
+                const desired = desiredEncodings[idx];
+
+                if (!desired) {
+                    return;
+                }
+                if (desired.active !== undefined) {
+                    encoding.active = desired.active;
+                }
+                if (desired.maxBitrate !== undefined) {
+                    encoding.maxBitrate = desired.maxBitrate;
+                }
+                if (desired.scaleResolutionDownBy !== undefined) {
+                    encoding.scaleResolutionDownBy = desired.scaleResolutionDownBy;
+                }
+                if (desired.scalabilityMode !== undefined) {
+                    encoding.scalabilityMode = desired.scalabilityMode;
+                }
+            });
+        } else {
+            parameters.encodings = desiredEncodings as RTCRtpEncodingParameters[];
+        }
+
         await transceiver.sender.setParameters(parameters);
     };
 
@@ -872,15 +929,21 @@ export default class TraceablePeerConnection {
      * and update the DD Header extensions for AV1.
      *
      * @param {RTCSessionDescription} description - The description to be munged.
+     * @param {boolean} isLocal - Whether the description is local or remote.
      * @returns {RTCSessionDescription} - The munged description.
      */
-    private _mungeDescription(description: RTCSessionDescription): RTCSessionDescription {
+    private _mungeDescription(description: RTCSessionDescription, isLocal: boolean = true): RTCSessionDescription {
         this.trace('RTCSessionDescription::preTransform', TraceablePeerConnection.dumpSDP(description));
         let mungedSdp = transform.parse(description?.sdp);
+        const audioQuality = this.audioQualityLocal;
 
-        mungedSdp = this.tpcUtils.mungeOpus(mungedSdp);
+        mungedSdp = this.tpcUtils.mungeOpus(mungedSdp, audioQuality);
         mungedSdp = this.tpcUtils.mungeCodecOrder(mungedSdp);
         mungedSdp = this.tpcUtils.setMaxBitrates(mungedSdp, true);
+
+        if (!isLocal) {
+            mungedSdp = this.tpcUtils._stripSdesMid(mungedSdp);
+        }
         const mungedDescription = new RTCSessionDescription({
             sdp: transform.write(mungedSdp),
             type: description.type
@@ -1986,7 +2049,7 @@ export default class TraceablePeerConnection {
                 streams
             };
 
-            if (!browser.isFirefox()) {
+            if (!browser.isFirefox() || browser.supportsEncodingsConfig()) {
                 transceiverInit.sendEncodings = this.tpcUtils.getStreamEncodings(track);
             }
 
@@ -2002,20 +2065,19 @@ export default class TraceablePeerConnection {
         }
 
         if (transceiver?.mid) {
-            this.localTrackTransceiverMids.set(track.rtcId, transceiver.mid.toString());
+            const mid = transceiver.mid.toString();
+
+            this.localTrackTransceiverMids.set(track.rtcId, mid);
+            this._midsWithSentTrack.add(mid);
         }
 
         if (track) {
             this.localTracks.set(rtcId, track);
-            if (track.isAudioTrack()) {
-                this._hasHadAudioTrack = true;
-            } else {
-                this._hasHadVideoTrack = true;
-            }
         }
 
-        // On Firefox, the encodings have to be configured on the sender only after the transceiver is created.
-        if (browser.isFirefox() && webrtcStream && this.doesTrueSimulcast(track)) {
+        // FF < 110 doesn't honor sendEncodings on addTransceiver; configure the encodings via setParameters.
+        if (browser.isFirefox() && !browser.supportsEncodingsConfig()
+                && webrtcStream && this.doesTrueSimulcast(track)) {
             await this._setEncodings(track);
         }
     };
@@ -2032,7 +2094,6 @@ export default class TraceablePeerConnection {
 
         if (!this._assertTrackBelongs('addTrackToPc', track)) {
             // Abort
-
             return Promise.reject('Track not found on the peerconnection');
         }
 
@@ -2045,15 +2106,41 @@ export default class TraceablePeerConnection {
         }
 
         return this.replaceTrack(null, track, true /* isMuteOperation */).then(() => {
+            let shouldRenegotiate = false;
+
             if (track) {
                 if (track.isAudioTrack()) {
-                    this._hasHadAudioTrack = true;
-                } else {
-                    this._hasHadVideoTrack = true;
+                    // Sync audioQualityLocal from microphone track settings (stereo/mono)
+                    const isMicrophoneTrack = !track.sourceType && !track.sourceId && track.deviceId;
+
+                    if (isMicrophoneTrack && track.getTrack()) {
+                        const channelCount = track.getTrack()?.getSettings?.()?.channelCount;
+
+                        if (typeof channelCount === 'number') {
+                            const stereo = channelCount === 2;
+                            const opusMaxAverageBitrate = stereo
+                                ? this.options?.audioQuality?.opusMaxAverageBitrateStereo
+                                : this.options?.audioQuality?.opusMaxAverageBitrateMono;
+
+                            // Update if stereo or bitrate differs from current
+                            if (this.audioQualityLocal?.stereo !== stereo
+                                || this.audioQualityLocal?.opusMaxAverageBitrate !== opusMaxAverageBitrate) {
+
+                                this.audioQualityLocal = {
+                                    ...this.audioQualityLocal,
+                                    opusMaxAverageBitrate,
+                                    stereo
+                                };
+                                logger.info(`${this} audio quality updated: stereo=${stereo}, bitrate=${opusMaxAverageBitrate}bps`);
+
+                                shouldRenegotiate = true;
+                            }
+                        }
+                    }
                 }
             }
 
-            return false;
+            return shouldRenegotiate;
         });
     }
 
@@ -2308,13 +2395,13 @@ export default class TraceablePeerConnection {
                 }
 
                 if (newTrack) {
-                    if (newTrack.isAudioTrack()) {
-                        this._hasHadAudioTrack = true;
-                    } else {
-                        this._hasHadVideoTrack = true;
-                    }
-                    this.localTrackTransceiverMids.set(newTrack.rtcId, transceiver?.mid?.toString());
+                    const newMid = transceiver?.mid?.toString();
+
+                    this.localTrackTransceiverMids.set(newTrack.rtcId, newMid);
                     this.localTracks.set(newTrack.rtcId, newTrack);
+                    if (newMid) {
+                        this._midsWithSentTrack.add(newMid);
+                    }
 
                     // Send RTCStats event when the track is added for the first time.
                     this._sendRtcStatsEvent(newTrack, false);
@@ -2517,7 +2604,7 @@ export default class TraceablePeerConnection {
     setLocalDescription(description: RTCSessionDescription): Promise<void> {
         let localDescription = description;
 
-        localDescription = this._mungeDescription(localDescription);
+        localDescription = this._mungeDescription(localDescription, true);
 
         return new Promise((resolve, reject) => {
             this.peerconnection.setLocalDescription(localDescription)
@@ -2560,7 +2647,7 @@ export default class TraceablePeerConnection {
             'setRemoteDescription::postTransform (correct ssrc order)',
              TraceablePeerConnection.dumpSDP(remoteDescription));
 
-        remoteDescription = this._mungeDescription(remoteDescription);
+        remoteDescription = this._mungeDescription(remoteDescription, false);
 
         return new Promise((resolve, reject) => {
             this.peerconnection.setRemoteDescription(remoteDescription)

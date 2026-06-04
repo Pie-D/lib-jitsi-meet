@@ -504,6 +504,11 @@ export default class JitsiConferenceEventManager {
             if (metadata.recording && typeof metadata.recording.isTranscribingEnabled !== 'undefined') {
                 conference._setTranscribingEnabled(Boolean(metadata.recording.isTranscribingEnabled));
             }
+
+            if (metadata.services) {
+                chatRoom.xmpp.connection.jingle.onReceiveStunAndTurnCredentials(metadata);
+            }
+
             conference.eventEmitter.emit(JitsiConferenceEvents.METADATA_UPDATED, metadata);
         });
     }
