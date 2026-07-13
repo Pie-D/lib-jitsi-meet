@@ -787,6 +787,7 @@ export default class ChatRoom extends Listenable {
 
         this.eventEmitter.emit(XMPPEvents.PRESENCE_RECEIVED, {
             fromHiddenDomain: member.isHiddenDomain,
+            isFocus: member.isFocus,
             presence: pres
         });
 
