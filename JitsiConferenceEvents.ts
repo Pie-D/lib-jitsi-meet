@@ -104,6 +104,14 @@ export enum JitsiConferenceEvents {
     BRIDGE_BWE_STATS_RECEIVED = 'conference.bridgeBweStatsReceived',
 
     /**
+     * Event fired when jicofo signals that this client does not advertise capabilities that the deployment requires.
+     * The payload is an object with an 'action' field ('reject' or 'warn') and a 'features' field, which lists the
+     * missing capabilities. With 'reject' the client is not invited to the conference, i.e. it can not send or receive
+     * media, but it stays in the room and can still use the features which do not need a media session (e.g. chat).
+     */
+    CLIENT_REQUIREMENTS_NOT_MET = 'conference.client_requirements_not_met',
+
+    /**
      * UTC conference timestamp when first participant joined.
      */
     CONFERENCE_CREATED_TIMESTAMP = 'conference.createdTimestamp',
@@ -299,9 +307,32 @@ export enum JitsiConferenceEvents {
     MEMBERS_ONLY_CHANGED = 'conference.membersOnlyChanged',
 
     /**
+     * Event fired when the author corrects one of their chat messages (XEP-0308).
+     * Carries the sender, the id of the corrected message, the new text and the
+     * timestamp when the correction comes from the room history.
+     */
+    MESSAGE_CORRECTED = 'conference.message_corrected',
+
+    /**
+     * Event fired when a chat message is moderated. The room is the authority for
+     * this, so the event carries only the message id and the optional reason.
+     */
+    MESSAGE_MODERATED = 'conference.message_moderated',
+
+    /**
+     * Indicates whether the room handles message moderation and editing server side.
+     */
+    MESSAGE_MODERATION_SUPPORTED_CHANGED = 'conference.messageModerationSupported',
+
+    /**
      * New text message was received.
      */
     MESSAGE_RECEIVED = 'conference.messageReceived',
+
+    /**
+     * Event indicates that a message was retracted
+    */
+    MESSAGE_RETRACTED = 'conference.messageRetracted',
 
     /**
      * Event fired when the conference metadata is updated.

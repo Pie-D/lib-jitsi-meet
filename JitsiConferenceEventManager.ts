@@ -232,6 +232,10 @@ export default class JitsiConferenceEventManager {
             JitsiConferenceEvents.CONFERENCE_FAILED,
             JitsiConferenceErrors.CONFERENCE_MAX_USERS);
 
+        this.chatRoomForwarder.forward(XMPPEvents.ROOM_TIME_LIMIT_ERROR,
+            JitsiConferenceEvents.CONFERENCE_FAILED,
+            JitsiConferenceErrors.CONFERENCE_TIME_LIMIT);
+
         this.chatRoomForwarder.forward(XMPPEvents.PASSWORD_REQUIRED,
             JitsiConferenceEvents.CONFERENCE_FAILED,
             JitsiConferenceErrors.PASSWORD_REQUIRED);
@@ -356,6 +360,8 @@ export default class JitsiConferenceEventManager {
             JitsiConferenceEvents.MEMBERS_ONLY_CHANGED);
         this.chatRoomForwarder.forward(XMPPEvents.MUC_VISITORS_SUPPORTED_CHANGED,
             JitsiConferenceEvents.VISITORS_SUPPORTED_CHANGED);
+        this.chatRoomForwarder.forward(XMPPEvents.MUC_MESSAGE_MODERATION_SUPPORTED_CHANGED,
+            JitsiConferenceEvents.MESSAGE_MODERATION_SUPPORTED_CHANGED);
 
         chatRoom.addListener(XMPPEvents.MUC_MEMBER_JOINED,
             conference.onMemberJoined.bind(conference));
@@ -437,6 +443,39 @@ export default class JitsiConferenceEventManager {
                 conference.eventEmitter.emit(
                     JitsiConferenceEvents.PRIVATE_MESSAGE_RECEIVED,
                     participantId, txt, ts, messageId, displayName, isVisitor, replyToId);
+            });
+
+        chatRoom?.addListener(XMPPEvents.MESSAGE_CORRECTED,
+            (from: string, messageId: string, message: string, timestamp?: string) => {
+                conference.eventEmitter.emit(
+                    JitsiConferenceEvents.MESSAGE_CORRECTED,
+                    Strophe.getResourceFromJid(from),
+                    messageId,
+                    message,
+                    timestamp
+                );
+            });
+
+        chatRoom?.addListener(XMPPEvents.MESSAGE_MODERATED,
+            (messageId: string, reason?: string) => {
+                conference.eventEmitter.emit(
+                    JitsiConferenceEvents.MESSAGE_MODERATED,
+                    messageId,
+                    reason
+                );
+            });
+
+        chatRoom.addListener(
+            XMPPEvents.MESSAGE_RETRACTED,
+
+            (jid: string, messageId: string) => {
+                const participantId = Strophe.getResourceFromJid(jid);
+
+                conference.eventEmitter.emit(
+                    JitsiConferenceEvents.MESSAGE_RETRACTED,
+                    participantId,
+                    messageId
+                );
             });
 
         chatRoom.addListener(XMPPEvents.PRESENCE_STATUS,
@@ -736,6 +775,9 @@ export default class JitsiConferenceEventManager {
             (value: MediaType) => {
                 conference.eventEmitter.emit(JitsiConferenceEvents.AV_MODERATION_REJECTED, { mediaType: value });
             });
+
+        this._addConferenceXMPPListener(XMPPEvents.CLIENT_REQUIREMENTS_RECEIVED,
+            (value: unknown) => conference.eventEmitter.emit(JitsiConferenceEvents.CLIENT_REQUIREMENTS_NOT_MET, value));
 
         this._addConferenceXMPPListener(XMPPEvents.VISITORS_MESSAGE,
             (value: string) => conference.eventEmitter.emit(JitsiConferenceEvents.VISITORS_MESSAGE, value));
